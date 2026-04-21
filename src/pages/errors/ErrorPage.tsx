@@ -19,7 +19,11 @@ const ErrorPage = () => {
           We encountered an error. Please try again later.
         </p>
 
-        <Button onClick={() => navigate("/")} className="w-full cursor-pointer sm:w-auto hover:bg-neutral-300 hover:text-neutral-800 transition-colors delay-100 ease-in-out" variant="secondary">
+        <Button
+          onClick={() => navigate("/")}
+          className="w-full cursor-pointer sm:w-auto hover:bg-neutral-300 hover:text-neutral-800 transition-colors delay-100 ease-in-out"
+          variant="secondary"
+        >
           Go Home
         </Button>
       </div>

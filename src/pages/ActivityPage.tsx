@@ -14,13 +14,18 @@ const ActivityPage = () => {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const data = await firebaseFetch<Record<string, Omit<ActivityLog, "id">> | null>(
-          "activity.json"
-        );
+        const data = await firebaseFetch<Record<
+          string,
+          Omit<ActivityLog, "id">
+        > | null>("activity.json");
         if (data) {
           const sorted = Object.keys(data)
             .map((key) => ({ id: key, ...data[key] }))
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            .sort(
+              (a, b) =>
+                new Date(b.timestamp).getTime() -
+                new Date(a.timestamp).getTime()
+            );
           setLogs(sorted);
         }
       } catch {
@@ -34,17 +39,23 @@ const ActivityPage = () => {
 
   const getEntityIcon = (type: ActivityLog["entityType"]) => {
     switch (type) {
-      case "project": return <FolderOpen className="w-4 h-4" />;
-      case "task": return <CheckSquare className="w-4 h-4" />;
-      case "user": return <Users className="w-4 h-4" />;
+      case "project":
+        return <FolderOpen className="w-4 h-4" />;
+      case "task":
+        return <CheckSquare className="w-4 h-4" />;
+      case "user":
+        return <Users className="w-4 h-4" />;
     }
   };
 
   const getEntityBadgeStyle = (type: ActivityLog["entityType"]) => {
     switch (type) {
-      case "project": return "bg-blue-50 text-blue-700 border-blue-200";
-      case "task": return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      case "user": return "bg-violet-50 text-violet-700 border-violet-200";
+      case "project":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "task":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "user":
+        return "bg-violet-50 text-violet-700 border-violet-200";
     }
   };
 
@@ -84,8 +95,12 @@ const ActivityPage = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm">{log.userName}</span>
-                      <span className="text-sm text-muted-foreground">{log.action}</span>
+                      <span className="font-medium text-sm">
+                        {log.userName}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {log.action}
+                      </span>
                       <Badge
                         variant="outline"
                         className={`text-xs ${getEntityBadgeStyle(log.entityType)}`}
@@ -94,7 +109,8 @@ const ActivityPage = () => {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {formatDate(log.timestamp)} · {new Date(log.timestamp).toLocaleTimeString()}
+                      {formatDate(log.timestamp)} ·{" "}
+                      {new Date(log.timestamp).toLocaleTimeString()}
                     </p>
                   </div>
                 </div>

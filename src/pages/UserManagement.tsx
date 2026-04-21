@@ -19,7 +19,11 @@ import {
 } from "@/components/ui/select";
 import { UserCog, Users, Search, AlertCircle } from "lucide-react";
 import { Role, type User, Permissions } from "@/features/types";
-import { getInitials, getRoleIcon, getRoleBadgeStyle } from "@/utils/roleUtilities";
+import {
+  getInitials,
+  getRoleIcon,
+  getRoleBadgeStyle,
+} from "@/utils/roleUtilities";
 import { toast } from "sonner";
 import LoaderIcon from "@/components/ui/loader";
 import { firebaseFetch } from "@/firebase/firebaseFetch";
@@ -35,7 +39,10 @@ const UserManagement = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const data = await firebaseFetch<Record<string, Omit<User, 'id'>> | null>('users.json');
+        const data = await firebaseFetch<Record<
+          string,
+          Omit<User, "id">
+        > | null>("users.json");
 
         if (data) {
           const usersList: User[] = Object.keys(data).map((key) => ({
@@ -43,7 +50,7 @@ const UserManagement = () => {
             name: data[key].name,
             email: data[key].email,
             role: data[key].role,
-            title: data[key].title || '',
+            title: data[key].title || "",
           }));
           setUsers(usersList);
         }
@@ -67,7 +74,7 @@ const UserManagement = () => {
   });
 
   const handleRoleChange = async (userId: string, newRole: Role) => {
-    const userBeingUpdated = users.find(u => u.id === userId);
+    const userBeingUpdated = users.find((u) => u.id === userId);
     const previousRole = userBeingUpdated?.role;
 
     try {
@@ -81,20 +88,23 @@ const UserManagement = () => {
       );
 
       if (previousRole === Role.MANAGER && newRole !== Role.MANAGER) {
-        const projectsData = await firebaseFetch<Record<string, any> | null>('projects.json');
+        const projectsData = await firebaseFetch<Record<string, any> | null>(
+          "projects.json"
+        );
 
         if (projectsData) {
           const projectUpdates: Record<string, any> = {};
           Object.keys(projectsData)
-            .filter(pid => projectsData[pid].managerId === userId)
-            .forEach(pid => {
+            .filter((pid) => projectsData[pid].managerId === userId)
+            .forEach((pid) => {
               projectUpdates[`/projects/${pid}/managerId`] = "";
               projectUpdates[`/projects/${pid}/managerName`] = "";
-              projectUpdates[`/projects/${pid}/updatedAt`] = new Date().toISOString();
+              projectUpdates[`/projects/${pid}/updatedAt`] =
+                new Date().toISOString();
             });
 
           if (Object.keys(projectUpdates).length > 0) {
-            await firebaseFetch('.json', {
+            await firebaseFetch(".json", {
               method: "PATCH",
               body: JSON.stringify(projectUpdates),
             });
@@ -110,7 +120,9 @@ const UserManagement = () => {
           body: JSON.stringify({ role: previousRole }),
         }).catch(() => {});
         setUsers((prevUsers) =>
-          prevUsers.map((u) => (u.id === userId ? { ...u, role: previousRole } : u))
+          prevUsers.map((u) =>
+            u.id === userId ? { ...u, role: previousRole } : u
+          )
         );
       }
       console.error("Failed to update user role:", error);
@@ -120,7 +132,8 @@ const UserManagement = () => {
 
   const roleStats = {
     total: users.length,
-    admin: users.filter((u) => u.role === Role.ADMIN || u.role === Role.OWNER).length,
+    admin: users.filter((u) => u.role === Role.ADMIN || u.role === Role.OWNER)
+      .length,
     manager: users.filter((u) => u.role === Role.MANAGER).length,
     member: users.filter((u) => u.role === Role.MEMBER).length,
     guest: users.filter((u) => u.role === Role.GUEST).length,
@@ -278,9 +291,7 @@ const UserManagement = () => {
                               </span>
                             )}
                           </h3>
-                          <RoleIconComponent
-                            className="w-4 h-4 text-muted-foreground"
-                          />
+                          <RoleIconComponent className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {userData.email}
@@ -289,33 +300,39 @@ const UserManagement = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <Badge
-                        variant="outline"
-                        className={badgeStyle}
-                      >
+                      <Badge variant="outline" className={badgeStyle}>
                         {userData.role}
                       </Badge>
 
-                      {!isCurrentUser && !Permissions.canManageUsers(userData.role) && (
-                        <Select
-                          value={userData.role}
-                          onValueChange={(newRole) =>
-                            handleRoleChange(userData.id, newRole as Role)
-                          }
-                        >
-                          <SelectTrigger className="w-40">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={Role.MEMBER}>Member</SelectItem>
-                            <SelectItem value={Role.MANAGER}>Manager</SelectItem>
-                            <SelectItem value={Role.GUEST}>Guest</SelectItem>
-                            {Permissions.canManageUsers(user?.role || Role.GUEST) && (
-                              <SelectItem value={Role.ADMIN}>Admin</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
+                      {!isCurrentUser &&
+                        !Permissions.canManageUsers(userData.role) && (
+                          <Select
+                            value={userData.role}
+                            onValueChange={(newRole) =>
+                              handleRoleChange(userData.id, newRole as Role)
+                            }
+                          >
+                            <SelectTrigger className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={Role.MEMBER}>
+                                Member
+                              </SelectItem>
+                              <SelectItem value={Role.MANAGER}>
+                                Manager
+                              </SelectItem>
+                              <SelectItem value={Role.GUEST}>Guest</SelectItem>
+                              {Permissions.canManageUsers(
+                                user?.role || Role.GUEST
+                              ) && (
+                                <SelectItem value={Role.ADMIN}>
+                                  Admin
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        )}
                     </div>
                   </div>
                 );

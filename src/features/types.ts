@@ -5,39 +5,39 @@ export const Role = {
   MEMBER: "Member",
   GUEST: "Guest",
 } as const;
-export type Role = typeof Role[keyof typeof Role];
+export type Role = (typeof Role)[keyof typeof Role];
 
 export const RequestStatus = {
-  IDLE: 'idle',
-  LOADING: 'loading',
-  SUCCEEDED: 'succeeded',
-  FAILED: 'failed',
+  IDLE: "idle",
+  LOADING: "loading",
+  SUCCEEDED: "succeeded",
+  FAILED: "failed",
 } as const;
-export type RequestStatus = typeof RequestStatus[keyof typeof RequestStatus];
+export type RequestStatus = (typeof RequestStatus)[keyof typeof RequestStatus];
 
 export const ProjectStatus = {
-  NOT_STARTED: 'Not Started',
-  IN_PROGRESS: 'In Progress',
-  COMPLETED: 'Completed',
-  ON_HOLD: 'On Hold',
+  NOT_STARTED: "Not Started",
+  IN_PROGRESS: "In Progress",
+  COMPLETED: "Completed",
+  ON_HOLD: "On Hold",
 } as const;
-export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
+export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus];
 
 export const TaskStatus = {
-  TO_DO: 'To Do',
-  IN_PROGRESS: 'In Progress',
-  DONE: 'Done',
-  BLOCKED: 'Blocked',
+  TO_DO: "To Do",
+  IN_PROGRESS: "In Progress",
+  DONE: "Done",
+  BLOCKED: "Blocked",
 } as const;
-export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
+export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
 
 export const Priority = {
-  LOW: 'Low',
-  MEDIUM: 'Medium',
-  HIGH: 'High',
-  CRITICAL: 'Critical',
+  LOW: "Low",
+  MEDIUM: "Medium",
+  HIGH: "High",
+  CRITICAL: "Critical",
 } as const;
-export type Priority = typeof Priority[keyof typeof Priority];
+export type Priority = (typeof Priority)[keyof typeof Priority];
 
 export type ProjectPriority = Priority;
 export type TaskPriority = Priority;

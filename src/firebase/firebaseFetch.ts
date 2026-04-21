@@ -21,7 +21,9 @@ export async function firebaseFetch<T = any>(
   });
 
   if (!response.ok) {
-    throw new Error(`Firebase request failed: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Firebase request failed: ${response.status} ${response.statusText}`
+    );
   }
 
   return response.json();

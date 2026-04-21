@@ -8,6 +8,9 @@ module.exports = {
   },
   testMatch: ["<rootDir>/tests/**/*.test.ts", "<rootDir>/tests/**/*.test.tsx"],
   transform: {
-    "^.+\\.tsx?$": ["ts-jest", { useESM: false, tsconfig: { esModuleInterop: true } }],
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      { useESM: false, tsconfig: { esModuleInterop: true } },
+    ],
   },
 };

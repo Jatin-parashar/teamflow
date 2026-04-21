@@ -15,7 +15,8 @@ const UnauthorizedPage = () => {
           Access Denied
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          You don't have permission to view this page. Contact your administrator if you believe this is a mistake.
+          You don't have permission to view this page. Contact your
+          administrator if you believe this is a mistake.
         </p>
         <div className="flex gap-3 justify-center">
           <Button variant="outline" onClick={() => navigate(-1)}>
