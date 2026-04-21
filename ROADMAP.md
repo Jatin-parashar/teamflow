@@ -6,7 +6,6 @@ Tasks are in priority order. Remove each item once completed.
 
 ## 🚀 High Priority (Resume Impact)
 
-- [ ] **Real-time Notifications** — Firebase `onValue` listeners, bell icon with unread count
 - [ ] **Global Search** — search across tasks, projects, and users
 
 ---
