@@ -129,8 +129,6 @@ const CreateProjectPage = () => {
           managerName: selectedManager?.name || "",
           members: projectMembers,
           endDate: "",
-          createdBy: user?.id || "",
-          createdByName: user?.name || "",
         })
       ).unwrap();
       await logActivity(

@@ -21,7 +21,7 @@ import {
   ShieldAlert,
   Crown,
   Briefcase,
-  User,
+  User as UserIcon,
 } from "lucide-react";
 import { Role, type User, Permissions } from "@/features/types";
 import {
@@ -184,7 +184,7 @@ const UserManagement = () => {
         <StatCard
           label="Members"
           value={roleStats.member}
-          icon={User}
+          icon={UserIcon}
           iconClass="text-blue-500"
           valueClass="text-blue-600"
         />
