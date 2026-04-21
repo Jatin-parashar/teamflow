@@ -5,8 +5,9 @@ import { updateTask, fetchTaskById } from "@/features/taskSlice";
 import { fetchProjects } from "@/features/projectSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -14,13 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { toast } from "sonner";
 import {
   type TaskStatus,
@@ -29,17 +23,19 @@ import {
   RequestStatus,
 } from "@/features/types";
 import type { ProjectMember } from "@/features/projectSlice";
-import { ArrowLeft, Edit3 } from "lucide-react";
+import { Edit3, Loader2 } from "lucide-react";
 import { logActivity } from "@/firebase/activityLog";
 import LoaderIcon from "@/components/ui/loader";
+import PageHeader from "@/components/PageHeader";
+import FormField from "@/components/FormField";
 
 const EditTaskPage = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { id } = useParams();
-  const { user } = useAppSelector((state) => state.auth);
-  const { projects } = useAppSelector((state) => state.projects);
-  const { currentTask, status } = useAppSelector((state) => state.tasks);
+  const { user } = useAppSelector((s) => s.auth);
+  const { projects } = useAppSelector((s) => s.projects);
+  const { currentTask, status } = useAppSelector((s) => s.tasks);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -50,27 +46,25 @@ const EditTaskPage = () => {
     assignedTo: "",
     dueDate: "",
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [availableMembers, setAvailableMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       if (id) {
         try {
           await Promise.all([
             dispatch(fetchTaskById(id)),
             dispatch(fetchProjects()),
           ]);
-        } catch (_error) {
+        } catch {
           toast.error("Failed to load task data");
         }
       }
       setLoading(false);
     };
-
-    loadData();
+    load();
   }, [dispatch, id]);
 
   useEffect(() => {
@@ -89,85 +83,65 @@ const EditTaskPage = () => {
 
   useEffect(() => {
     if (formData.projectId) {
-      const selectedProject = projects.find((p) => p.id === formData.projectId);
-      if (selectedProject) {
-        setAvailableMembers(selectedProject.members || []);
-      }
+      const p = projects.find((p) => p.id === formData.projectId);
+      setAvailableMembers(p?.members || []);
     }
   }, [formData.projectId, projects]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.title.trim()) {
-      newErrors.title = "Title is required";
-    } else if (formData.title.trim().length > 100) {
-      newErrors.title = "Title must be under 100 characters";
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = "Description is required";
-    } else if (formData.description.trim().length > 1000) {
-      newErrors.description = "Description must be under 1000 characters";
-    }
-
-    if (!formData.projectId) {
-      newErrors.projectId = "Project is required";
-    }
-
-    if (!formData.assignedTo) {
-      newErrors.assignedTo = "Assignee is required";
-    }
-
-    if (!formData.dueDate) {
-      newErrors.dueDate = "Due date is required";
-    } else {
-      const dueDate = new Date(formData.dueDate);
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!formData.title.trim()) e.title = "Title is required";
+    else if (formData.title.trim().length > 100) e.title = "Max 100 characters";
+    if (!formData.description.trim()) e.description = "Description is required";
+    else if (formData.description.trim().length > 1000)
+      e.description = "Max 1000 characters";
+    if (!formData.projectId) e.projectId = "Project is required";
+    if (!formData.assignedTo) e.assignedTo = "Assignee is required";
+    if (!formData.dueDate) e.dueDate = "Due date is required";
+    else {
+      const due = new Date(formData.dueDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (dueDate < today && formData.status !== TS.DONE) {
-        newErrors.dueDate =
-          "Due date cannot be in the past unless task is completed";
-      }
+      if (due < today && formData.status !== TS.DONE)
+        e.dueDate = "Due date cannot be in the past unless task is completed";
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm() || !id) {
+    if (!validate() || !id) {
       toast.error("Please fix the errors in the form");
       return;
     }
-
     const selectedProject = projects.find((p) => p.id === formData.projectId);
     const selectedAssignee = availableMembers.find(
       (m) => m.userId === formData.assignedTo
     );
-
     if (!selectedProject || !selectedAssignee) {
       toast.error("Missing required information");
       return;
     }
 
-    const updates = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      status: formData.status,
-      priority: formData.priority,
-      projectId: formData.projectId,
-      projectName: selectedProject.title,
-      assignedTo: formData.assignedTo,
-      assignedToName: selectedAssignee.name,
-      assignedToEmail: selectedAssignee.email,
-      dueDate: formData.dueDate,
-    };
-
     try {
-      const result = await dispatch(updateTask({ id, updates }));
+      const result = await dispatch(
+        updateTask({
+          id,
+          updates: {
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            status: formData.status,
+            priority: formData.priority,
+            projectId: formData.projectId,
+            projectName: selectedProject.title,
+            assignedTo: formData.assignedTo,
+            assignedToName: selectedAssignee.name,
+            assignedToEmail: selectedAssignee.email,
+            dueDate: formData.dueDate,
+          },
+        })
+      );
       if (updateTask.fulfilled.match(result)) {
         if (user)
           await logActivity(
@@ -183,90 +157,73 @@ const EditTaskPage = () => {
       } else {
         toast.error((result.payload as string) || "Failed to update task");
       }
-    } catch (_error) {
+    } catch {
       toast.error("Failed to update task");
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const set = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  if (loading) {
-    return <LoaderIcon />;
-  }
-
-  if (!currentTask) {
+  if (loading) return <LoaderIcon />;
+  if (!currentTask)
     return (
-      <div className="text-center py-8">
-        <h2 className="text-xl font-semibold mb-2">Task not found</h2>
-        <p className="text-muted-foreground mb-4">
-          The task you're looking for doesn't exist or has been deleted.
+      <div className="max-w-2xl mx-auto space-y-6">
+        <PageHeader
+          title="Edit Task"
+          backTo="/tasks"
+          backLabel="Back to Tasks"
+        />
+        <p className="text-muted-foreground text-center py-12">
+          Task not found or has been deleted.
         </p>
-        <Button onClick={() => navigate("/tasks")}>Back to Tasks</Button>
       </div>
     );
-  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate(`/tasks/${id}`)}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Task
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Edit Task</h1>
-          <p className="text-muted-foreground">Update task information</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Edit Task"
+        description="Update task information"
+        backTo={`/tasks/${id}`}
+        backLabel="Back to Task"
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5" />
+      <Card className="border border-border bg-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Edit3 className="h-4 w-4 text-muted-foreground" />
             Task Details
           </CardTitle>
-          <CardDescription>
-            Make changes to the task information below
-          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Task Title *</Label>
+        <Separator />
+        <CardContent className="pt-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                id="title"
+                label="Task Title"
+                required
+                error={errors.title}
+              >
                 <Input
                   id="title"
                   placeholder="Enter task title"
                   value={formData.title}
                   maxLength={100}
-                  onChange={(e) => handleInputChange("title", e.target.value)}
-                  className={errors.title ? "border-red-500" : ""}
+                  onChange={(e) => set("title", e.target.value)}
+                  className={`h-9 bg-background ${errors.title ? "border-destructive" : ""}`}
                 />
-                {errors.title && (
-                  <p className="text-sm text-red-500">{errors.title}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority">Priority</Label>
+              </FormField>
+              <FormField id="priority" label="Priority">
                 <Select
                   value={formData.priority}
-                  onValueChange={(value) =>
-                    handleInputChange("priority", value)
-                  }
+                  onValueChange={(v) => set("priority", v)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
+                  <SelectTrigger className="h-9 bg-background">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={Priority.LOW}>Low</SelectItem>
@@ -275,67 +232,66 @@ const EditTaskPage = () => {
                     <SelectItem value={Priority.CRITICAL}>Critical</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </FormField>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
+            <FormField
+              id="description"
+              label="Description"
+              required
+              error={errors.description}
+            >
               <Textarea
                 id="description"
                 placeholder="Enter task description"
                 value={formData.description}
                 maxLength={1000}
-                onChange={(e) =>
-                  handleInputChange("description", e.target.value)
-                }
-                className={errors.description ? "border-red-500" : ""}
                 rows={4}
+                onChange={(e) => set("description", e.target.value)}
+                className={`bg-background resize-none ${errors.description ? "border-destructive" : ""}`}
               />
-              {errors.description && (
-                <p className="text-sm text-red-500">{errors.description}</p>
-              )}
-            </div>
+            </FormField>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="project">Project *</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                id="project"
+                label="Project"
+                required
+                error={errors.projectId}
+              >
                 <Select
                   value={formData.projectId}
-                  onValueChange={(value) =>
-                    handleInputChange("projectId", value)
-                  }
+                  onValueChange={(v) => set("projectId", v)}
                 >
                   <SelectTrigger
-                    className={errors.projectId ? "border-red-500" : ""}
+                    className={`h-9 bg-background ${errors.projectId ? "border-destructive" : ""}`}
                   >
                     <SelectValue placeholder="Select project" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.title}
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.projectId && (
-                  <p className="text-sm text-red-500">{errors.projectId}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="assignedTo">Assign To *</Label>
+              </FormField>
+              <FormField
+                id="assignedTo"
+                label="Assign To"
+                required
+                error={errors.assignedTo}
+              >
                 <Select
                   value={formData.assignedTo}
-                  onValueChange={(value) =>
-                    handleInputChange("assignedTo", value)
-                  }
+                  onValueChange={(v) => set("assignedTo", v)}
                   disabled={
                     !formData.projectId || availableMembers.length === 0
                   }
                 >
                   <SelectTrigger
-                    className={errors.assignedTo ? "border-red-500" : ""}
+                    className={`h-9 bg-background ${errors.assignedTo ? "border-destructive" : ""}`}
                   >
                     <SelectValue
                       placeholder={
@@ -348,28 +304,24 @@ const EditTaskPage = () => {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableMembers.map((member) => (
-                      <SelectItem key={member.userId} value={member.userId}>
-                        {member.name} ({member.email})
+                    {availableMembers.map((m) => (
+                      <SelectItem key={m.userId} value={m.userId}>
+                        {m.name} ({m.email})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.assignedTo && (
-                  <p className="text-sm text-red-500">{errors.assignedTo}</p>
-                )}
-              </div>
+              </FormField>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField id="status" label="Status">
                 <Select
                   value={formData.status}
-                  onValueChange={(value) => handleInputChange("status", value)}
+                  onValueChange={(v) => set("status", v)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
+                  <SelectTrigger className="h-9 bg-background">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={TS.TO_DO}>To Do</SelectItem>
@@ -378,63 +330,78 @@ const EditTaskPage = () => {
                     <SelectItem value={TS.BLOCKED}>Blocked</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dueDate">Due Date *</Label>
+              </FormField>
+              <FormField
+                id="dueDate"
+                label="Due Date"
+                required
+                error={errors.dueDate}
+              >
                 <Input
                   id="dueDate"
                   type="date"
                   value={formData.dueDate}
-                  onChange={(e) => handleInputChange("dueDate", e.target.value)}
-                  className={errors.dueDate ? "border-red-500" : ""}
+                  onChange={(e) => set("dueDate", e.target.value)}
+                  className={`h-9 bg-background ${errors.dueDate ? "border-destructive" : ""}`}
                 />
-                {errors.dueDate && (
-                  <p className="text-sm text-red-500">{errors.dueDate}</p>
-                )}
-              </div>
+              </FormField>
             </div>
 
-            <div className="bg-muted/50 p-4 rounded-lg">
-              <h3 className="font-medium mb-2">Task Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            {/* Task metadata */}
+            <div className="rounded-lg border border-border bg-muted/40 p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-3">
+                Task Information
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <div>
-                  <span className="font-medium">Created by:</span>{" "}
+                  <span className="font-medium text-foreground">
+                    Created by:{" "}
+                  </span>
                   {currentTask.createdByName}
                 </div>
                 <div>
-                  <span className="font-medium">Created on:</span>{" "}
+                  <span className="font-medium text-foreground">Created: </span>
                   {new Date(currentTask.createdAt).toLocaleDateString()}
                 </div>
                 <div>
-                  <span className="font-medium">Last updated:</span>{" "}
+                  <span className="font-medium text-foreground">
+                    Last updated:{" "}
+                  </span>
                   {new Date(currentTask.updatedAt).toLocaleDateString()}
                 </div>
                 {currentTask.completedAt && (
                   <div>
-                    <span className="font-medium">Completed on:</span>{" "}
+                    <span className="font-medium text-foreground">
+                      Completed:{" "}
+                    </span>
                     {new Date(currentTask.completedAt).toLocaleDateString()}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex gap-3 pt-6">
+            <Separator />
+            <div className="flex gap-3">
               <Button
                 type="submit"
-                className="cursor-pointer"
+                size="sm"
                 disabled={status === RequestStatus.LOADING}
               >
-                {status === RequestStatus.LOADING
-                  ? "Updating..."
-                  : "Update Task"}
+                {status === RequestStatus.LOADING ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Task"
+                )}
               </Button>
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 onClick={() => navigate(`/tasks/${id}`)}
                 disabled={status === RequestStatus.LOADING}
-                className="cursor-pointer"
               >
                 Cancel
               </Button>

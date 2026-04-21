@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -7,13 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/context/ThemeProvider";
 import { Priority } from "@/features/types";
 import { useAppSelector } from "@/app/hooks";
 import { firebaseFetch } from "@/firebase/firebaseFetch";
 import { toast } from "sonner";
 import LoaderIcon from "@/components/ui/loader";
+import PageHeader from "@/components/PageHeader";
+import { Moon, Bell, User, LayoutGrid } from "lucide-react";
 
 interface UserSettings {
   emailNotifications: boolean;
@@ -37,27 +43,49 @@ const defaultSettings: UserSettings = {
   defaultPriority: Priority.MEDIUM,
 };
 
+interface SettingRowProps {
+  id: string;
+  label: string;
+  description: string;
+  children: React.ReactNode;
+}
+
+const SettingRow = ({ id, label, description, children }: SettingRowProps) => (
+  <div className="flex items-center justify-between gap-4 py-4">
+    <div className="flex-1">
+      <Label
+        htmlFor={id}
+        className="text-sm font-medium text-foreground cursor-pointer"
+      >
+        {label}
+      </Label>
+      <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+    </div>
+    {children}
+  </div>
+);
+
 const SettingsPage = () => {
   const { theme, setTheme } = useTheme();
-  const { user } = useAppSelector((state) => state.auth);
+  const { user } = useAppSelector((s) => s.auth);
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    const loadSettings = async () => {
+    const load = async () => {
       try {
         const data = await firebaseFetch<UserSettings | null>(
           `settings/${user.id}.json`
         );
         if (data) setSettings(data);
       } catch {
-        // Use defaults silently
+        /* use defaults */
       } finally {
         setLoading(false);
       }
     };
-    loadSettings();
+    load();
   }, [user]);
 
   const updateSetting = async <K extends keyof UserSettings>(
@@ -78,211 +106,223 @@ const SettingsPage = () => {
     }
   };
 
-  const toggleTheme = (checked: boolean) => {
-    setTheme(checked ? "dark" : "light");
-  };
-
   if (loading) return <LoaderIcon />;
 
   return (
-    <div className="flex flex-col space-y-6 max-w-4xl mx-auto p-6">
-      <h2 className="font-semibold text-3xl mb-6">Settings</h2>
-      <div className="space-y-4">
-        <h3 className="text-xl font-medium text-muted-foreground">
-          Appearance
-        </h3>
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="darkMode" className="text-lg font-medium">
-              Dark Mode
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Switch between light and dark themes
-            </p>
-          </div>
-          <Switch
-            id="darkMode"
-            checked={theme === "dark"}
-            onCheckedChange={toggleTheme}
-          />
-        </div>
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <PageHeader
+        title="Settings"
+        description="Manage your preferences and account settings"
+      />
 
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="showWeekends" className="text-lg font-medium">
-              Show Weekends
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Display weekends in calendar and timeline views
-            </p>
-          </div>
-          <Switch
-            id="showWeekends"
-            checked={settings.showWeekends}
-            onCheckedChange={(v) => updateSetting("showWeekends", v)}
-          />
-        </div>
-      </div>
+      <Tabs defaultValue="appearance">
+        <TabsList className="bg-muted border border-border">
+          <TabsTrigger value="appearance" className="gap-1.5">
+            <Moon className="h-3.5 w-3.5" />
+            Appearance
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="gap-1.5">
+            <Bell className="h-3.5 w-3.5" />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="workspace" className="gap-1.5">
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Workspace
+          </TabsTrigger>
+          <TabsTrigger value="account" className="gap-1.5">
+            <User className="h-3.5 w-3.5" />
+            Account
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="space-y-4">
-        <h3 className="text-xl font-medium text-muted-foreground">
-          Notifications
-        </h3>
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="emailNotifications" className="text-lg font-medium">
-              Email Notifications
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Receive email updates for important events
-            </p>
-          </div>
-          <Switch
-            id="emailNotifications"
-            checked={settings.emailNotifications}
-            onCheckedChange={(v) => updateSetting("emailNotifications", v)}
-          />
-        </div>
+        {/* Appearance */}
+        <TabsContent value="appearance" className="mt-4">
+          <Card className="border border-border bg-card">
+            <CardContent className="p-4 divide-y divide-border">
+              <SettingRow
+                id="darkMode"
+                label="Dark Mode"
+                description="Switch between light and dark themes"
+              >
+                <Switch
+                  id="darkMode"
+                  checked={theme === "dark"}
+                  onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
+                />
+              </SettingRow>
+              <SettingRow
+                id="showWeekends"
+                label="Show Weekends"
+                description="Display weekends in calendar and timeline views"
+              >
+                <Switch
+                  id="showWeekends"
+                  checked={settings.showWeekends}
+                  onCheckedChange={(v) => updateSetting("showWeekends", v)}
+                />
+              </SettingRow>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="taskReminders" className="text-lg font-medium">
-              Task Reminder Alerts
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Get notified about upcoming task deadlines
-            </p>
-          </div>
-          <Switch
-            id="taskReminders"
-            checked={settings.taskReminders}
-            onCheckedChange={(v) => updateSetting("taskReminders", v)}
-          />
-        </div>
+        {/* Notifications */}
+        <TabsContent value="notifications" className="mt-4">
+          <Card className="border border-border bg-card">
+            <CardContent className="p-4 divide-y divide-border">
+              <SettingRow
+                id="emailNotifications"
+                label="Email Notifications"
+                description="Receive email updates for important events"
+              >
+                <Switch
+                  id="emailNotifications"
+                  checked={settings.emailNotifications}
+                  onCheckedChange={(v) =>
+                    updateSetting("emailNotifications", v)
+                  }
+                />
+              </SettingRow>
+              <SettingRow
+                id="taskReminders"
+                label="Task Reminder Alerts"
+                description="Get notified about upcoming task deadlines"
+              >
+                <Switch
+                  id="taskReminders"
+                  checked={settings.taskReminders}
+                  onCheckedChange={(v) => updateSetting("taskReminders", v)}
+                />
+              </SettingRow>
+              <SettingRow
+                id="projectUpdates"
+                label="Project Status Updates"
+                description="Notifications when project milestones are reached"
+              >
+                <Switch
+                  id="projectUpdates"
+                  checked={settings.projectUpdates}
+                  onCheckedChange={(v) => updateSetting("projectUpdates", v)}
+                />
+              </SettingRow>
+              <SettingRow
+                id="weeklyDigest"
+                label="Weekly Progress Digest"
+                description="Weekly summary of completed tasks and upcoming deadlines"
+              >
+                <Switch
+                  id="weeklyDigest"
+                  checked={settings.weeklyDigest}
+                  onCheckedChange={(v) => updateSetting("weeklyDigest", v)}
+                />
+              </SettingRow>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="projectUpdates" className="text-lg font-medium">
-              Project Status Updates
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Notifications when project milestones are reached
-            </p>
-          </div>
-          <Switch
-            id="projectUpdates"
-            checked={settings.projectUpdates}
-            onCheckedChange={(v) => updateSetting("projectUpdates", v)}
-          />
-        </div>
+        {/* Workspace */}
+        <TabsContent value="workspace" className="mt-4">
+          <Card className="border border-border bg-card">
+            <CardContent className="p-4 divide-y divide-border">
+              <SettingRow
+                id="autoAssignTasks"
+                label="Auto-assign Tasks"
+                description="Automatically assign tasks based on team member availability"
+              >
+                <Switch
+                  id="autoAssignTasks"
+                  checked={settings.autoAssignTasks}
+                  onCheckedChange={(v) => updateSetting("autoAssignTasks", v)}
+                />
+              </SettingRow>
+              <SettingRow
+                id="defaultView"
+                label="Default Project View"
+                description="Choose your preferred view when opening projects"
+              >
+                <Select
+                  value={settings.defaultView}
+                  onValueChange={(v) => updateSetting("defaultView", v)}
+                >
+                  <SelectTrigger className="w-40 h-8 text-sm bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kanban">Kanban Board</SelectItem>
+                    <SelectItem value="list">List View</SelectItem>
+                    <SelectItem value="calendar">Calendar</SelectItem>
+                    <SelectItem value="timeline">Timeline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+              <SettingRow
+                id="defaultPriority"
+                label="Default Task Priority"
+                description="Default priority level for new tasks"
+              >
+                <Select
+                  value={settings.defaultPriority}
+                  onValueChange={(v) => updateSetting("defaultPriority", v)}
+                >
+                  <SelectTrigger className="w-40 h-8 text-sm bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={Priority.LOW}>Low</SelectItem>
+                    <SelectItem value={Priority.MEDIUM}>Medium</SelectItem>
+                    <SelectItem value={Priority.HIGH}>High</SelectItem>
+                    <SelectItem value={Priority.CRITICAL}>Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="weeklyDigest" className="text-lg font-medium">
-              Weekly Progress Digest
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Weekly summary of completed tasks and upcoming deadlines
-            </p>
-          </div>
-          <Switch
-            id="weeklyDigest"
-            checked={settings.weeklyDigest}
-            onCheckedChange={(v) => updateSetting("weeklyDigest", v)}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-xl font-medium text-muted-foreground">
-          Project Management
-        </h3>
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="autoAssignTasks" className="text-lg font-medium">
-              Auto-assign Tasks
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Automatically assign tasks based on team member availability
-            </p>
-          </div>
-          <Switch
-            id="autoAssignTasks"
-            checked={settings.autoAssignTasks}
-            onCheckedChange={(v) => updateSetting("autoAssignTasks", v)}
-          />
-        </div>
-
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="defaultView" className="text-lg font-medium">
-              Default Project View
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Choose your preferred view when opening projects
-            </p>
-          </div>
-          <Select
-            value={settings.defaultView}
-            onValueChange={(v) => updateSetting("defaultView", v)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="kanban">Kanban Board</SelectItem>
-              <SelectItem value="list">List View</SelectItem>
-              <SelectItem value="calendar">Calendar</SelectItem>
-              <SelectItem value="timeline">Timeline</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="taskPriority" className="text-lg font-medium">
-              Task Priority System
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Default priority levels for new tasks
-            </p>
-          </div>
-          <Select
-            value={settings.defaultPriority}
-            onValueChange={(v) => updateSetting("defaultPriority", v)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={Priority.LOW}>Low Priority</SelectItem>
-              <SelectItem value={Priority.MEDIUM}>Medium Priority</SelectItem>
-              <SelectItem value={Priority.HIGH}>High Priority</SelectItem>
-              <SelectItem value={Priority.CRITICAL}>Critical</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-xl font-medium text-muted-foreground">Account</h3>
-        <div className="p-6 flex items-center justify-between border shadow-lg rounded-xl bg-card text-card-foreground">
-          <div>
-            <Label htmlFor="changePassword" className="text-lg font-medium">
-              Change Password
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Update your account password
-            </p>
-          </div>
-          <button
-            id="changePassword"
-            className="text-black text-sm dark:text-white hover:underline font-medium px-4 py-2 rounded-md transition-colors"
-          >
-            Update Password
-          </button>
-        </div>
-      </div>
+        {/* Account */}
+        <TabsContent value="account" className="mt-4">
+          <Card className="border border-border bg-card">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Email Address
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {user?.email}
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground">Read-only</span>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Role</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {user?.title || user?.role}
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Managed by admin
+                </span>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Change Password
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Update your account password
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" className="h-8 text-xs">
+                  Update Password
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

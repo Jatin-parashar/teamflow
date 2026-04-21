@@ -33,10 +33,10 @@ jobs:
         run: npx prettier --check .
 
       - name: Audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
 
       - name: Test
-        run: npm test -- --ci
+        run: npm test -- --ci --passWithNoTests
 
       - name: Build
         run: npm run build

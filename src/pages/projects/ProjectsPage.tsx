@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -26,34 +30,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Eye,
-  Users,
-  Calendar,
-  AlertCircle,
-  Clock,
-  Shield,
-  Briefcase,
-  UserPlus,
-  CheckCircle,
-  XCircle,
-  PauseCircle,
-  Target,
-  TrendingUp,
-  Activity,
-} from "lucide-react";
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import {
@@ -76,23 +58,38 @@ import {
   getProjectStatusColor,
   getRoleBadgeStyle,
 } from "@/utils/roleUtilities";
-
-interface ProjectStats {
-  total: number;
-  notStarted: number;
-  inProgress: number;
-  completed: number;
-  onHold: number;
-  highPriority: number;
-  overdue: number;
-}
+import PageHeader from "@/components/PageHeader";
+import StatCard from "@/components/StatCard";
+import EmptyState from "@/components/EmptyState";
+import {
+  Plus,
+  Search,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Eye,
+  Users,
+  Calendar,
+  AlertCircle,
+  Clock,
+  Shield,
+  Briefcase,
+  UserPlus,
+  CheckCircle2,
+  XCircle,
+  PauseCircle,
+  Target,
+  TrendingUp,
+  Activity,
+  TriangleAlert,
+} from "lucide-react";
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 const ProjectsPage = () => {
   const dispatch = useAppDispatch();
-  const { projects, status, error } = useAppSelector((state) => state.projects);
-  const { user } = useAppSelector((state) => state.auth);
+  const { projects, status, error } = useAppSelector((s) => s.projects);
+  const { user } = useAppSelector((s) => s.auth);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -103,500 +100,455 @@ const ProjectsPage = () => {
     dispatch(fetchProjects());
   }, [dispatch]);
 
-  const getFilteredProjectsByRole = (): Project[] => {
+  const getFilteredByRole = (): Project[] => {
     if (!user) return [];
     if (hasMinRole(user.role, Role.ADMIN)) return projects;
-    if (hasMinRole(user.role, Role.MANAGER)) {
+    if (hasMinRole(user.role, Role.MANAGER))
       return projects.filter(
-        (project) =>
-          project.managerId === user.id ||
-          project.members?.some((member) => member.userId === user.id)
+        (p) =>
+          p.managerId === user.id ||
+          p.members?.some((m) => m.userId === user.id)
       );
-    }
-    return projects.filter((project) =>
-      project.members?.some((member) => member.userId === user.id)
-    );
+    return projects.filter((p) => p.members?.some((m) => m.userId === user.id));
   };
 
-  const roleBasedProjects = getFilteredProjectsByRole();
-
-  const filteredProjects = roleBasedProjects.filter((project) => {
-    const matchesSearch =
-      project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.managerName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || project.status === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || project.priority === priorityFilter;
-
-    return matchesSearch && matchesStatus && matchesPriority;
+  const roleBasedProjects = getFilteredByRole();
+  const filteredProjects = roleBasedProjects.filter((p) => {
+    const matchSearch =
+      p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.managerName.toLowerCase().includes(searchTerm.toLowerCase());
+    return (
+      matchSearch &&
+      (statusFilter === "all" || p.status === statusFilter) &&
+      (priorityFilter === "all" || p.priority === priorityFilter)
+    );
   });
 
-  const getProjectStats = (): ProjectStats => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return {
-      total: roleBasedProjects.length,
-      notStarted: roleBasedProjects.filter(
-        (p) => p.status === ProjectStatus.NOT_STARTED
-      ).length,
-      inProgress: roleBasedProjects.filter(
-        (p) => p.status === ProjectStatus.IN_PROGRESS
-      ).length,
-      completed: roleBasedProjects.filter(
-        (p) => p.status === ProjectStatus.COMPLETED
-      ).length,
-      onHold: roleBasedProjects.filter(
-        (p) => p.status === ProjectStatus.ON_HOLD
-      ).length,
-      highPriority: roleBasedProjects.filter(
-        (p) => p.priority === Priority.HIGH || p.priority === Priority.CRITICAL
-      ).length,
-      overdue: roleBasedProjects.filter((p) => {
-        if (p.endDate && p.status !== ProjectStatus.COMPLETED) {
-          const endDate = new Date(p.endDate);
-          return endDate < today;
-        }
-        return false;
-      }).length,
-    };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const stats = {
+    total: roleBasedProjects.length,
+    notStarted: roleBasedProjects.filter(
+      (p) => p.status === ProjectStatus.NOT_STARTED
+    ).length,
+    inProgress: roleBasedProjects.filter(
+      (p) => p.status === ProjectStatus.IN_PROGRESS
+    ).length,
+    completed: roleBasedProjects.filter(
+      (p) => p.status === ProjectStatus.COMPLETED
+    ).length,
+    onHold: roleBasedProjects.filter((p) => p.status === ProjectStatus.ON_HOLD)
+      .length,
+    highPriority: roleBasedProjects.filter(
+      (p) => p.priority === Priority.HIGH || p.priority === Priority.CRITICAL
+    ).length,
+    overdue: roleBasedProjects.filter(
+      (p) =>
+        p.endDate &&
+        p.status !== ProjectStatus.COMPLETED &&
+        new Date(p.endDate) < today
+    ).length,
   };
 
-  const stats = getProjectStats();
-
-  const handleDeleteProject = async (projectId: string) => {
+  const handleDelete = async (projectId: string) => {
     try {
       await dispatch(deleteProject(projectId)).unwrap();
       toast.success("Project deleted successfully");
       setDeleteDialogOpen(false);
       setProjectToDelete(null);
-    } catch (_error) {
+    } catch {
       toast.error("Failed to delete project");
     }
   };
 
-  const canCreateProjects = user
-    ? Permissions.canCreateProjects(user.role)
-    : false;
-  const canDeleteProjects = user
-    ? Permissions.canDeleteProjects(user.role)
-    : false;
-  const canEditProject = (project: Project) => {
-    if (!user) return false;
-    return (
-      Permissions.canEditProject(user.role) || project.managerId === user.id
-    );
-  };
-
-  const getUserProjectRole = (project: Project) => {
+  const canCreate = user ? Permissions.canCreateProjects(user.role) : false;
+  const canDelete = user ? Permissions.canDeleteProjects(user.role) : false;
+  const canEdit = (p: Project) =>
+    user
+      ? Permissions.canEditProject(user.role) || p.managerId === user.id
+      : false;
+  const getUserRole = (p: Project) => {
     if (!user) return null;
     if (hasMinRole(user.role, Role.ADMIN)) return user.role;
-    if (project.managerId === user.id) return Role.MANAGER;
-    if (project.members?.some((member) => member.userId === user.id))
-      return Role.MEMBER;
+    if (p.managerId === user.id) return Role.MANAGER;
+    if (p.members?.some((m) => m.userId === user.id)) return Role.MEMBER;
     return null;
   };
-
-  const isProjectOverdue = (project: Project) => {
-    if (!project.endDate || project.status === ProjectStatus.COMPLETED)
-      return false;
-    const today = new Date();
-    const endDate = new Date(project.endDate);
-    return endDate < today;
-  };
-
+  const isOverdue = (p: Project) =>
+    !!(
+      p.endDate &&
+      p.status !== ProjectStatus.COMPLETED &&
+      new Date(p.endDate) < today
+    );
   const getTimeRemaining = (endDate: string) => {
-    const today = new Date();
-    const end = new Date(endDate);
-    const diffTime = end.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / MS_PER_DAY);
-
-    if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
-    if (diffDays === 0) return "Due today";
-    if (diffDays === 1) return "1 day remaining";
-    return `${diffDays} days remaining`;
+    const diff = Math.ceil(
+      (new Date(endDate).getTime() - Date.now()) / MS_PER_DAY
+    );
+    if (diff < 0) return `${Math.abs(diff)}d overdue`;
+    if (diff === 0) return "Due today";
+    return `${diff}d left`;
   };
 
-  if (status === RequestStatus.LOADING) {
-    return <LoaderIcon />;
-  }
+  if (status === RequestStatus.LOADING) return <LoaderIcon />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            Projects
-          </h1>
-          <p className="text-muted-foreground">
-            Manage and track your projects
-          </p>
-        </div>
-        {canCreateProjects && (
-          <Button asChild>
-            <Link to="/projects/create">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Project
-            </Link>
-          </Button>
-        )}
-      </div>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <PageHeader
+          title="Projects"
+          description="Manage and track your projects"
+          actions={
+            canCreate ? (
+              <Button asChild size="sm">
+                <Link to="/projects/create">
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Create Project
+                </Link>
+              </Button>
+            ) : undefined
+          }
+        />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">
-                  Total
-                </p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-              <Target className="h-8 w-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">
-                  Not Started
-                </p>
-                <p className="text-2xl font-bold">{stats.notStarted}</p>
-              </div>
-              <XCircle className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">
-                  In Progress
-                </p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {stats.inProgress}
-                </p>
-              </div>
-              <Activity className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">
-                  Completed
-                </p>
-                <p className="text-2xl font-bold text-emerald-600">
-                  {stats.completed}
-                </p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-emerald-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">
-                  On Hold
-                </p>
-                <p className="text-2xl font-bold text-amber-600">
-                  {stats.onHold}
-                </p>
-              </div>
-              <PauseCircle className="h-8 w-8 text-amber-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">
-                  High Priority
-                </p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {stats.highPriority}
-                </p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">
-                  Overdue
-                </p>
-                <p className="text-2xl font-bold text-red-600">
-                  {stats.overdue}
-                </p>
-              </div>
-              <AlertCircle className="h-8 w-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="p-4 rounded-lg border bg-muted/50">
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            You have {user?.role} access
-          </span>
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex items-center">
-            <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
-            <span className="text-red-800">{error}</span>
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search projects by title, description, or manager..."
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            className="pl-9"
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <StatCard
+            label="Total"
+            value={stats.total}
+            icon={Target}
+            iconClass="text-primary"
+            valueClass="text-foreground"
+          />
+          <StatCard
+            label="Not Started"
+            value={stats.notStarted}
+            icon={XCircle}
+            iconClass="text-muted-foreground"
+            valueClass="text-muted-foreground"
+          />
+          <StatCard
+            label="In Progress"
+            value={stats.inProgress}
+            icon={Activity}
+            iconClass="text-blue-500"
+            valueClass="text-blue-600"
+          />
+          <StatCard
+            label="Completed"
+            value={stats.completed}
+            icon={CheckCircle2}
+            iconClass="text-emerald-500"
+            valueClass="text-emerald-600"
+          />
+          <StatCard
+            label="On Hold"
+            value={stats.onHold}
+            icon={PauseCircle}
+            iconClass="text-amber-500"
+            valueClass="text-amber-600"
+          />
+          <StatCard
+            label="High Priority"
+            value={stats.highPriority}
+            icon={TrendingUp}
+            iconClass="text-orange-500"
+            valueClass="text-orange-600"
+          />
+          <StatCard
+            label="Overdue"
+            value={stats.overdue}
+            icon={AlertCircle}
+            iconClass="text-destructive"
+            valueClass="text-destructive"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value={ProjectStatus.NOT_STARTED}>
-              Not Started
-            </SelectItem>
-            <SelectItem value={ProjectStatus.IN_PROGRESS}>
-              In Progress
-            </SelectItem>
-            <SelectItem value={ProjectStatus.COMPLETED}>Completed</SelectItem>
-            <SelectItem value={ProjectStatus.ON_HOLD}>On Hold</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Filter by priority" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Priorities</SelectItem>
-            <SelectItem value={Priority.LOW}>Low</SelectItem>
-            <SelectItem value={Priority.MEDIUM}>Medium</SelectItem>
-            <SelectItem value={Priority.HIGH}>High</SelectItem>
-            <SelectItem value={Priority.CRITICAL}>Critical</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      {filteredProjects.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <Users className="h-12 w-12 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 dark:text-slate-100">
-            No projects found
-          </h3>
-          <p className="text-gray-600 mb-4 dark:text-slate-200">
-            {searchTerm
-              ? "Try adjusting your search filters"
-              : Permissions.canCreateProjects(user?.role || Role.GUEST)
-                ? "Get started by creating your first project"
-                : "No projects have been assigned to you yet"}
-          </p>
+        {/* Role badge */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/50 w-fit">
+          <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">
+            Viewing as{" "}
+            <span className="font-medium text-foreground">{user?.role}</span>
+          </span>
         </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => {
-            const userRole = getUserProjectRole(project);
-            const isOverdue = isProjectOverdue(project);
 
-            return (
-              <Card
-                key={project.id}
-                className={`hover:shadow-lg transition-shadow`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1 flex-1">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <span className="truncate">{project.title}</span>
-                        {userRole && (
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${getRoleBadgeStyle(userRole)}`}
-                          >
-                            {userRole}
-                          </Badge>
+        {error && (
+          <Alert variant="destructive">
+            <TriangleAlert className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-9 bg-background"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-44 h-9 bg-background">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value={ProjectStatus.NOT_STARTED}>
+                Not Started
+              </SelectItem>
+              <SelectItem value={ProjectStatus.IN_PROGRESS}>
+                In Progress
+              </SelectItem>
+              <SelectItem value={ProjectStatus.COMPLETED}>Completed</SelectItem>
+              <SelectItem value={ProjectStatus.ON_HOLD}>On Hold</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-full sm:w-44 h-9 bg-background">
+              <SelectValue placeholder="All Priorities" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priorities</SelectItem>
+              <SelectItem value={Priority.LOW}>Low</SelectItem>
+              <SelectItem value={Priority.MEDIUM}>Medium</SelectItem>
+              <SelectItem value={Priority.HIGH}>High</SelectItem>
+              <SelectItem value={Priority.CRITICAL}>Critical</SelectItem>
+            </SelectContent>
+          </Select>
+          {(searchTerm ||
+            statusFilter !== "all" ||
+            priorityFilter !== "all") && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("all");
+                setPriorityFilter("all");
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Grid */}
+        {filteredProjects.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No projects found"
+            description={
+              searchTerm
+                ? "Try adjusting your search filters"
+                : canCreate
+                  ? "Get started by creating your first project"
+                  : "No projects have been assigned to you yet"
+            }
+            action={
+              canCreate && !searchTerm ? (
+                <Button asChild size="sm">
+                  <Link to="/projects/create">
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Create Project
+                  </Link>
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredProjects.map((project) => {
+              const userRole = getUserRole(project);
+              const overdue = isOverdue(project);
+              return (
+                <Card
+                  key={project.id}
+                  className={`border bg-card hover:shadow-md transition-all duration-150 ${overdue ? "border-destructive/40" : "border-border"}`}
+                >
+                  <CardContent className="p-4 space-y-3">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <p className="font-semibold text-sm text-foreground truncate cursor-default hover:text-primary transition-colors">
+                                {project.title}
+                              </p>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-64" side="top">
+                              <p className="text-xs text-muted-foreground line-clamp-4">
+                                {project.description}
+                              </p>
+                            </HoverCardContent>
+                          </HoverCard>
+                          {userRole && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${getRoleBadgeStyle(userRole)}`}
+                            >
+                              {userRole}
+                            </Badge>
+                          )}
+                        </div>
+                        {overdue && (
+                          <div className="flex items-center gap-1 text-destructive text-xs mt-0.5">
+                            <AlertCircle className="h-3 w-3" />
+                            <span className="font-medium">Overdue</span>
+                          </div>
                         )}
-                      </CardTitle>
-                      <CardDescription className="text-sm text-muted-foreground">
-                        {project.id}
-                      </CardDescription>
-                      {isOverdue && (
-                        <div className="flex items-center gap-1 text-red-600 text-sm">
-                          <AlertCircle className="h-3 w-3" />
-                          <span className="font-medium">Overdue</span>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem asChild>
+                            <Link to={`/projects/${project.id}`}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Link>
+                          </DropdownMenuItem>
+                          {canEdit(project) && (
+                            <DropdownMenuItem asChild>
+                              <Link to={`/projects/${project.id}/edit`}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
+                          {user && Permissions.canManageMembers(user.role) && (
+                            <DropdownMenuItem asChild>
+                              <Link
+                                to={`/projects/${project.id}/manage-members`}
+                              >
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Manage Members
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
+                          {canDelete && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                onClick={() => {
+                                  setProjectToDelete(project.id);
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Badges */}
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge
+                        variant="outline"
+                        className={`${getProjectStatusColor(project.status)} text-xs flex items-center gap-1`}
+                      >
+                        <ProjectStatusIcon projectStatus={project.status} />
+                        {project.status}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={`${getPriorityColor(project.priority)} text-xs`}
+                      >
+                        {project.priority}
+                      </Badge>
+                    </div>
+
+                    <Separator />
+
+                    {/* Meta */}
+                    <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">
+                          {project.managerName || "Unassigned"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-3.5 w-3.5 shrink-0" />
+                        <span>{project.members?.length ?? 0} members</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-3.5 w-3.5 shrink-0" />
+                        <span>
+                          {new Date(project.startDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {project.endDate && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 shrink-0" />
+                          <span
+                            className={
+                              overdue ? "text-destructive font-medium" : ""
+                            }
+                          >
+                            {getTimeRemaining(project.endDate)}
+                          </span>
                         </div>
                       )}
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link to={`/projects/${project.id}`}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Link>
-                        </DropdownMenuItem>
-                        {canEditProject(project) && (
-                          <DropdownMenuItem asChild>
-                            <Link to={`/projects/${project.id}/edit`}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                        )}
-                        {user && Permissions.canManageMembers(user.role) && (
-                          <DropdownMenuItem asChild>
-                            <Link to={`/projects/${project.id}/manage-members`}>
-                              <UserPlus className="h-4 w-4 mr-2" />
-                              Manage Members
-                            </Link>
-                          </DropdownMenuItem>
-                        )}
-                        {canDeleteProjects && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setProjectToDelete(project.id);
-                              setDeleteDialogOpen(true);
-                            }}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 flex flex-col">
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {project.description}
-                  </p>
 
-                  <div className="flex flex-wrap gap-2">
-                    <Badge
-                      className={`${getProjectStatusColor(
-                        project.status
-                      )} flex items-center gap-1`}
+                    <Separator />
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-7 text-xs"
+                      asChild
                     >
-                      <ProjectStatusIcon projectStatus={project.status} />
-                      {project.status}
-                    </Badge>
-                    <Badge className={getPriorityColor(project.priority)}>
-                      {project.priority}
-                    </Badge>
-                  </div>
+                      <Link to={`/projects/${project.id}`}>
+                        <Eye className="h-3.5 w-3.5 mr-1.5" />
+                        View Details
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="h-4 w-4" />
-                      <span className="truncate">
-                        Manager: {project.managerName}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      <span>{project.members?.length || 0} members</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        Started:{" "}
-                        {new Date(project.startDate).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {project.endDate && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        <span
-                          className={
-                            isOverdue ? "text-red-600 font-medium" : ""
-                          }
-                        >
-                          {getTimeRemaining(project.endDate)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-2 border-t">
-                    <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
-                      <span>Status</span>
-                      <span className="ml-auto">
-                        {project.status === ProjectStatus.COMPLETED
-                          ? "Completed"
-                          : project.status === ProjectStatus.IN_PROGRESS
-                            ? "In Progress"
-                            : project.status === ProjectStatus.ON_HOLD
-                              ? "On Hold"
-                              : "Not Started"}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              project and all associated tasks.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                projectToDelete && handleDeleteProject(projectToDelete)
-              }
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete Project
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the project and all associated
+                tasks. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => projectToDelete && handleDelete(projectToDelete)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete Project
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 };
 

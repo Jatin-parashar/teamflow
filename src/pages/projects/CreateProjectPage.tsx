@@ -1,17 +1,15 @@
 import { useState, useEffect, type ChangeEvent } from "react";
 import { useNavigate, Navigate } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -19,15 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertCircle,
-  ArrowLeft,
-  Calendar,
-  FileText,
-  Loader2,
-  Plus,
-  UserPlus,
-} from "lucide-react";
 import { toast } from "sonner";
 import { createProject } from "@/features/projectSlice";
 import { firebaseFetch } from "@/firebase/firebaseFetch";
@@ -41,12 +30,22 @@ import {
   type User,
 } from "@/features/types";
 import LoaderIcon from "@/components/ui/loader";
+import PageHeader from "@/components/PageHeader";
+import FormField from "@/components/FormField";
+import {
+  FileText,
+  Calendar,
+  UserPlus,
+  Loader2,
+  Plus,
+  TriangleAlert,
+} from "lucide-react";
 
 const CreateProjectPage = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { status, error } = useAppSelector((state) => state.projects);
-  const { user } = useAppSelector((state) => state.auth);
+  const { status, error } = useAppSelector((s) => s.projects);
+  const { user } = useAppSelector((s) => s.auth);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -56,84 +55,61 @@ const CreateProjectPage = () => {
     startDate: "",
     managerId: "",
     managerName: "",
-    members: [],
+    members: [] as any[],
   });
-
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [availableManagers, setAvailableManagers] = useState<User[]>([]);
   const [availableMembers, setAvailableMembers] = useState<User[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const data = await firebaseFetch<Record<string, Omit<User, "id">> | null>(
-        "users.json"
-      );
-
-      if (data) {
-        const users: User[] = Object.keys(data).map((key) => ({
-          id: key,
-          ...data[key],
-        }));
-
-        setAvailableManagers(users.filter((u) => u.role === Role.MANAGER));
-        setAvailableMembers(users.filter((u) => u.role === Role.MEMBER));
-      }
-    } catch (_error) {
-      toast.error("Failed to fetch users");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const data = await firebaseFetch<Record<
+          string,
+          Omit<User, "id">
+        > | null>("users.json");
+        if (data) {
+          const users: User[] = Object.keys(data).map((key) => ({
+            id: key,
+            ...data[key],
+          }));
+          setAvailableManagers(users.filter((u) => u.role === Role.MANAGER));
+          setAvailableMembers(users.filter((u) => u.role === Role.MEMBER));
+        }
+      } catch {
+        toast.error("Failed to fetch users");
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchUsers();
   }, []);
 
-  if (!user || !Permissions.canCreateProjects(user.role)) {
+  if (!user || !Permissions.canCreateProjects(user.role))
     return <Navigate to="/unauthorized" replace />;
-  }
 
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.title.trim()) {
-      errors.title = "Project title is required";
-    } else if (formData.title.trim().length > 100) {
-      errors.title = "Project title must be under 100 characters";
-    }
-
-    if (!formData.description.trim()) {
-      errors.description = "Project description is required";
-    } else if (formData.description.trim().length > 1000) {
-      errors.description = "Description must be under 1000 characters";
-    }
-
-    if (!formData.startDate) {
-      errors.startDate = "Start date is required";
-    }
-
-    if (!formData.managerId) {
-      errors.managerId = "Project manager is required";
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!formData.title.trim()) e.title = "Project title is required";
+    else if (formData.title.trim().length > 100) e.title = "Max 100 characters";
+    if (!formData.description.trim()) e.description = "Description is required";
+    else if (formData.description.trim().length > 1000)
+      e.description = "Max 1000 characters";
+    if (!formData.startDate) e.startDate = "Start date is required";
+    if (!formData.managerId) e.managerId = "Project manager is required";
+    setFormErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validate()) return;
     const selectedManager = availableManagers.find(
       (m) => m.id === formData.managerId
     );
-
     const projectMembers = selectedMembers.map((memberId) => {
       const member = availableMembers.find((m) => m.id === memberId);
       return {
@@ -144,20 +120,19 @@ const CreateProjectPage = () => {
         joinedAt: new Date().toISOString(),
       };
     });
-
-    const projectData = {
-      ...formData,
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      managerName: selectedManager?.name || "",
-      members: projectMembers,
-      endDate: "",
-      createdBy: user?.id || "",
-      createdByName: user?.name || "",
-    };
-
     try {
-      await dispatch(createProject(projectData)).unwrap();
+      await dispatch(
+        createProject({
+          ...formData,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          managerName: selectedManager?.name || "",
+          members: projectMembers,
+          endDate: "",
+          createdBy: user?.id || "",
+          createdByName: user?.name || "",
+        })
+      ).unwrap();
       await logActivity(
         user.id,
         user.name,
@@ -168,129 +143,95 @@ const CreateProjectPage = () => {
       );
       toast.success("Project created successfully!");
       navigate("/projects");
-    } catch (_error) {
+    } catch {
       toast.error("Failed to create project");
     }
   };
 
   const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    if (formErrors[field]) {
-      setFormErrors((prev) => ({
-        ...prev,
-        [field]: "",
-      }));
-    }
-
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (formErrors[field]) setFormErrors((prev) => ({ ...prev, [field]: "" }));
     if (field === "managerId") {
-      const selectedManager = availableManagers.find((m) => m.id === value);
-      if (selectedManager) {
-        setFormData((prev) => ({
-          ...prev,
-          managerName: selectedManager.name,
-        }));
-      }
+      const mgr = availableManagers.find((m) => m.id === value);
+      if (mgr) setFormData((prev) => ({ ...prev, managerName: mgr.name }));
     }
   };
 
-  const handleMemberToggle = (memberId: string) => {
+  const toggleMember = (memberId: string) =>
     setSelectedMembers((prev) =>
       prev.includes(memberId)
         ? prev.filter((id) => id !== memberId)
         : [...prev, memberId]
     );
-  };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate("/projects")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Projects
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Create New Project</h1>
-          <p className="text-muted-foreground">
-            Create and assign a new project (Admin Only)
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Create New Project"
+        description="Create and assign a new project"
+        backTo="/projects"
+        backLabel="Back to Projects"
+      />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex items-center">
-            <AlertCircle className="h-4 w-4 text-red-800 mr-2" />
-            <span className="text-red-800">{error}</span>
-          </div>
-        </div>
+        <Alert variant="destructive">
+          <TriangleAlert className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+          {/* Project Info */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
                 Project Information
               </CardTitle>
-              <CardDescription>
-                Basic details about your project
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Project Title *</Label>
+            <Separator />
+            <CardContent className="pt-4 space-y-4">
+              <FormField
+                id="title"
+                label="Project Title"
+                required
+                error={formErrors.title}
+              >
                 <Input
                   id="title"
                   placeholder="Enter project title"
                   value={formData.title}
                   maxLength={100}
-                  onChange={(event) =>
-                    handleChange("title", event.target.value)
-                  }
-                  className={formErrors.title ? "border-red-800" : ""}
+                  onChange={(e) => handleChange("title", e.target.value)}
+                  className={`h-9 bg-background ${formErrors.title ? "border-destructive" : ""}`}
                 />
-                {formErrors.title && (
-                  <p className="text-sm text-red-800">{formErrors.title}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
+              </FormField>
+              <FormField
+                id="description"
+                label="Description"
+                required
+                error={formErrors.description}
+              >
                 <Textarea
                   id="description"
                   placeholder="Describe your project..."
                   rows={4}
                   maxLength={1000}
                   value={formData.description}
-                  onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
-                    handleChange("description", event.target.value)
+                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                    handleChange("description", e.target.value)
                   }
-                  className={formErrors.description ? "border-red-800" : ""}
+                  className={`bg-background resize-none ${formErrors.description ? "border-destructive" : ""}`}
                 />
-                {formErrors.description && (
-                  <p className="text-sm text-red-800">
-                    {formErrors.description}
-                  </p>
-                )}
-              </div>
-
+              </FormField>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Initial Status</Label>
+                <FormField id="status" label="Initial Status">
                   <Select
                     value={formData.status}
-                    onValueChange={(value) => handleChange("status", value)}
+                    onValueChange={(v) => handleChange("status", v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 bg-background">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -302,15 +243,13 @@ const CreateProjectPage = () => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="priority">Priority</Label>
+                </FormField>
+                <FormField id="priority" label="Priority">
                   <Select
                     value={formData.priority}
-                    onValueChange={(value) => handleChange("priority", value)}
+                    onValueChange={(v) => handleChange("priority", v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 bg-background">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -322,167 +261,171 @@ const CreateProjectPage = () => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </FormField>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+          {/* Assignment & Timeline */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
                 Assignment & Timeline
               </CardTitle>
-              <CardDescription>
-                Assign project manager and set start date
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date *</Label>
+            <Separator />
+            <CardContent className="pt-4 space-y-4">
+              <FormField
+                id="startDate"
+                label="Start Date"
+                required
+                error={formErrors.startDate}
+              >
                 <Input
                   id="startDate"
                   type="date"
                   value={formData.startDate}
-                  onChange={(event) =>
-                    handleChange("startDate", event.target.value)
-                  }
+                  onChange={(e) => handleChange("startDate", e.target.value)}
                   min={new Date().toISOString().split("T")[0]}
-                  className={formErrors.startDate ? "border-red-800" : ""}
+                  className={`h-9 bg-background ${formErrors.startDate ? "border-destructive" : ""}`}
                 />
-                {formErrors.startDate && (
-                  <p className="text-sm text-red-800">{formErrors.startDate}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="managerId">Project Manager *</Label>
+              </FormField>
+              <FormField
+                id="managerId"
+                label="Project Manager"
+                required
+                error={formErrors.managerId}
+              >
                 <Select
                   value={formData.managerId}
-                  onValueChange={(value) => handleChange("managerId", value)}
+                  onValueChange={(v) => handleChange("managerId", v)}
                   disabled={availableManagers.length === 0}
                 >
                   <SelectTrigger
-                    className={formErrors.managerId ? "border-red-800" : ""}
+                    className={`h-9 bg-background ${formErrors.managerId ? "border-destructive" : ""}`}
                   >
                     <SelectValue
                       placeholder={
                         availableManagers.length === 0
-                          ? "No managers available — assign Manager role first"
+                          ? "No managers available"
                           : "Select a project manager"
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableManagers.map((manager) => (
-                      <SelectItem key={manager.id} value={manager.id}>
-                        <div className="flex items-center justify-between w-full">
-                          <span>{manager.name}</span>
-                          <span className="text-xs text-muted-foreground ml-2">
-                            {manager.email}
-                          </span>
-                        </div>
+                    {availableManagers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <span>{m.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {m.email}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {availableManagers.length === 0 && !loading && (
-                  <p className="text-sm text-amber-600">
-                    No users with Manager role found. Go to User Management to
-                    assign the Manager role to a user first.
+                  <p className="text-xs text-amber-600 mt-1">
+                    No users with Manager role. Go to User Management to assign
+                    the Manager role first.
                   </p>
                 )}
-                {formErrors.managerId && (
-                  <p className="text-sm text-red-800">{formErrors.managerId}</p>
-                )}
-              </div>
-
-              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                <p className="text-sm text-blue-800 dark:text-neutral-200">
-                  <strong>Note:</strong> The project manager will be responsible
-                  for setting the end date and managing the project timeline
-                  after creation.
+              </FormField>
+              <div className="rounded-lg border border-border bg-muted/40 p-3">
+                <p className="text-xs text-muted-foreground">
+                  The project manager will be responsible for setting the end
+                  date and managing the project timeline after creation.
                 </p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              Team Members
-            </CardTitle>
-            <CardDescription>
-              Select team members to assign to this project
-            </CardDescription>
+        {/* Team Members */}
+        <Card className="border border-border bg-card">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-muted-foreground" />
+                Team Members
+              </CardTitle>
+              {selectedMembers.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {selectedMembers.length} selected
+                </Badge>
+              )}
+            </div>
           </CardHeader>
-          <CardContent>
+          <Separator />
+          <CardContent className="pt-4">
             {loading ? (
               <LoaderIcon />
             ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {availableMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-900 ${
-                      selectedMembers.includes(member.id)
-                        ? "bg-blue-50 dark:bg-slate-800 border-blue-300 dark:border-blue-500"
-                        : ""
-                    }`}
-                    onClick={() => handleMemberToggle(member.id)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedMembers.includes(member.id)}
-                        onChange={() => handleMemberToggle(member.id)}
-                        className="w-4 h-4"
-                      />
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {member.email}
-                        </p>
+              <ScrollArea className="h-56">
+                <div className="space-y-2 pr-3">
+                  {availableMembers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      No members available to assign.
+                    </p>
+                  ) : (
+                    availableMembers.map((member) => (
+                      <div
+                        key={member.id}
+                        onClick={() => toggleMember(member.id)}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedMembers.includes(member.id)
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-border bg-background hover:bg-accent/40"
+                        }`}
+                      >
+                        <Checkbox
+                          checked={selectedMembers.includes(member.id)}
+                          onCheckedChange={() => toggleMember(member.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">
+                            {member.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {member.email}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {member.role}
+                        </Badge>
                       </div>
-                    </div>
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded dark:bg-neutral-600">
-                      {member.role}
-                    </span>
-                  </div>
-                ))}
-                {availableMembers.length === 0 && (
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    No members available.
-                  </div>
-                )}
-              </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
             )}
-            <div className="mt-4 text-sm text-muted-foreground">
-              Selected: {selectedMembers.length} members
-            </div>
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
+        <div className="flex justify-end gap-3">
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={() => navigate("/projects")}
             disabled={status === RequestStatus.LOADING}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={status === RequestStatus.LOADING}>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={status === RequestStatus.LOADING}
+          >
             {status === RequestStatus.LOADING ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                 Creating...
               </>
             ) : (
               <>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-1.5" />
                 Create Project
               </>
             )}
