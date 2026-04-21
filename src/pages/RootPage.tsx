@@ -35,13 +35,15 @@ import {
   type LucideIcon,
   Users,
   Activity,
+  Search,
 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router";
 import { Permissions, Role } from "@/features/types";
 import { getInitials, getRoleBadgeStyle } from "@/utils/roleUtilities";
 import Breadcrumbs from "@/components/Breadcrumbs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import NotificationBell from "@/components/NotificationBell";
+import GlobalSearch from "@/components/GlobalSearch";
 import {
   startNotificationListener,
   clearNotificationState,
@@ -61,6 +63,7 @@ const SidebarAutoClose = () => {
 const RootPage = () => {
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Start real-time notification listener when user is logged in
   useEffect(() => {
@@ -71,6 +74,18 @@ const RootPage = () => {
       clearNotificationState(dispatch);
     };
   }, [user?.id, dispatch]);
+
+  // Global Cmd+K / Ctrl+K shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   interface MenuItem {
     title: string;
@@ -228,6 +243,23 @@ const RootPage = () => {
               </div>
               <div className="flex items-center gap-3">
                 <NotificationBell />
+                <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="hidden sm:flex items-center gap-2 px-3 h-8 rounded-md border border-border bg-muted/50 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                >
+                  <Search className="h-3.5 w-3.5" />
+                  <span>Search</span>
+                  <kbd className="ml-1 px-1 py-0.5 rounded border border-border bg-background font-mono text-[10px]">
+                    ⌘K
+                  </kbd>
+                </button>
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="flex sm:hidden items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Avatar className="w-8 h-8 cursor-pointer">

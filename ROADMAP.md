@@ -6,8 +6,6 @@ Tasks are in priority order. Remove each item once completed.
 
 ## 🚀 High Priority (Resume Impact)
 
-- [ ] **Global Search** — search across tasks, projects, and users
-
 ---
 
 ## 🔧 Core Feature Gaps
