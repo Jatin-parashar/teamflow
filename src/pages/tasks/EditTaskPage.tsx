@@ -24,9 +24,11 @@ import {
 import { toast } from "sonner";
 import {
   type TaskStatus,
+  TaskStatus as TS,
   Priority,
   RequestStatus,
 } from "@/features/types";
+import type { ProjectMember } from "@/features/projectSlice";
 import { ArrowLeft, Edit3 } from "lucide-react";
 import { logActivity } from "@/firebase/activityLog";
 import LoaderIcon from "@/components/ui/loader";
@@ -42,7 +44,7 @@ const EditTaskPage = () => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    status: "To Do" as TaskStatus,
+    status: TS.TO_DO as TaskStatus,
     priority: Priority.MEDIUM as Priority,
     projectId: "",
     assignedTo: "",
@@ -50,7 +52,7 @@ const EditTaskPage = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [availableMembers, setAvailableMembers] = useState<any[]>([]);
+  const [availableMembers, setAvailableMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,7 +63,7 @@ const EditTaskPage = () => {
             dispatch(fetchTaskById(id)),
             dispatch(fetchProjects()),
           ]);
-        } catch (error) {
+        } catch (_error) {
           toast.error("Failed to load task data");
         }
       }
@@ -123,7 +125,7 @@ const EditTaskPage = () => {
       const dueDate = new Date(formData.dueDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (dueDate < today && formData.status !== "Done") {
+      if (dueDate < today && formData.status !== TS.DONE) {
         newErrors.dueDate =
           "Due date cannot be in the past unless task is completed";
       }
@@ -167,13 +169,21 @@ const EditTaskPage = () => {
     try {
       const result = await dispatch(updateTask({ id, updates }));
       if (updateTask.fulfilled.match(result)) {
-        if (user) await logActivity(user.id, user.name, "Updated task", "task", id, formData.title.trim());
+        if (user)
+          await logActivity(
+            user.id,
+            user.name,
+            "Updated task",
+            "task",
+            id,
+            formData.title.trim()
+          );
         toast.success("Task updated successfully!");
         navigate(`/tasks/${id}`);
       } else {
         toast.error((result.payload as string) || "Failed to update task");
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to update task");
     }
   };
@@ -186,9 +196,7 @@ const EditTaskPage = () => {
   };
 
   if (loading) {
-    return (
-      <LoaderIcon />
-    );
+    return <LoaderIcon />;
   }
 
   if (!currentTask) {
@@ -223,9 +231,7 @@ const EditTaskPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle
-            className="flex items-center gap-2"
-          >
+          <CardTitle className="flex items-center gap-2">
             <Edit3 className="w-5 h-5" />
             Task Details
           </CardTitle>
@@ -324,12 +330,22 @@ const EditTaskPage = () => {
                   onValueChange={(value) =>
                     handleInputChange("assignedTo", value)
                   }
-                  disabled={!formData.projectId}
+                  disabled={
+                    !formData.projectId || availableMembers.length === 0
+                  }
                 >
                   <SelectTrigger
                     className={errors.assignedTo ? "border-red-500" : ""}
                   >
-                    <SelectValue placeholder="Select assignee" />
+                    <SelectValue
+                      placeholder={
+                        !formData.projectId
+                          ? "Select a project first"
+                          : availableMembers.length === 0
+                            ? "No members in this project"
+                            : "Select assignee"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {availableMembers.map((member) => (
@@ -356,10 +372,10 @@ const EditTaskPage = () => {
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="To Do">To Do</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Done">Done</SelectItem>
-                    <SelectItem value="Blocked">Blocked</SelectItem>
+                    <SelectItem value={TS.TO_DO}>To Do</SelectItem>
+                    <SelectItem value={TS.IN_PROGRESS}>In Progress</SelectItem>
+                    <SelectItem value={TS.DONE}>Done</SelectItem>
+                    <SelectItem value={TS.BLOCKED}>Blocked</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

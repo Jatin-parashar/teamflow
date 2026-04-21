@@ -62,9 +62,20 @@ import {
   type Project,
 } from "@/features/projectSlice";
 import LoaderIcon from "@/components/ui/loader";
-import { Priority, ProjectStatus, RequestStatus, Role, Permissions, hasMinRole } from "@/features/types";
+import {
+  Priority,
+  ProjectStatus,
+  RequestStatus,
+  Role,
+  Permissions,
+  hasMinRole,
+} from "@/features/types";
 import ProjectStatusIcon from "@/components/ProjectStatusIcon";
-import { getPriorityColor, getProjectStatusColor, getRoleBadgeStyle } from "@/utils/roleUtilities";
+import {
+  getPriorityColor,
+  getProjectStatusColor,
+  getRoleBadgeStyle,
+} from "@/utils/roleUtilities";
 
 interface ProjectStats {
   total: number;
@@ -75,6 +86,8 @@ interface ProjectStats {
   highPriority: number;
   overdue: number;
 }
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 const ProjectsPage = () => {
   const dispatch = useAppDispatch();
@@ -159,23 +172,30 @@ const ProjectsPage = () => {
       toast.success("Project deleted successfully");
       setDeleteDialogOpen(false);
       setProjectToDelete(null);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to delete project");
     }
   };
 
-  const canCreateProjects = user ? Permissions.canCreateProjects(user.role) : false;
-  const canDeleteProjects = user ? Permissions.canDeleteProjects(user.role) : false;
+  const canCreateProjects = user
+    ? Permissions.canCreateProjects(user.role)
+    : false;
+  const canDeleteProjects = user
+    ? Permissions.canDeleteProjects(user.role)
+    : false;
   const canEditProject = (project: Project) => {
     if (!user) return false;
-    return Permissions.canEditProject(user.role) || project.managerId === user.id;
+    return (
+      Permissions.canEditProject(user.role) || project.managerId === user.id
+    );
   };
 
   const getUserProjectRole = (project: Project) => {
     if (!user) return null;
     if (hasMinRole(user.role, Role.ADMIN)) return user.role;
     if (project.managerId === user.id) return Role.MANAGER;
-    if (project.members?.some((member) => member.userId === user.id)) return Role.MEMBER;
+    if (project.members?.some((member) => member.userId === user.id))
+      return Role.MEMBER;
     return null;
   };
 
@@ -191,7 +211,7 @@ const ProjectsPage = () => {
     const today = new Date();
     const end = new Date(endDate);
     const diffTime = end.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil(diffTime / MS_PER_DAY);
 
     if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
     if (diffDays === 0) return "Due today";
@@ -215,9 +235,7 @@ const ProjectsPage = () => {
           </p>
         </div>
         {canCreateProjects && (
-          <Button
-            asChild
-          >
+          <Button asChild>
             <Link to="/projects/create">
               <Plus className="h-4 w-4 mr-2" />
               Create Project
@@ -227,104 +245,104 @@ const ProjectsPage = () => {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        <Card className="border-blue-200 bg-blue-50 dark:bg-neutral-900">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-600 font-medium">Total</p>
-                <p className="text-2xl font-bold text-blue-800">
-                  {stats.total}
+                <p className="text-sm text-muted-foreground font-medium">
+                  Total
                 </p>
+                <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              <Target className="h-8 w-8 text-blue-600" />
+              <Target className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border-gray-200 bg-gray-50 dark:bg-neutral-900">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 font-medium dark:text-gray-400">
+                <p className="text-sm text-muted-foreground font-medium">
                   Not Started
                 </p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-gray-400">
-                  {stats.notStarted}
-                </p>
+                <p className="text-2xl font-bold">{stats.notStarted}</p>
               </div>
-              <XCircle className="h-8 w-8 text-gray-600 dark:text-gray-400" />
+              <XCircle className="h-8 w-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border-blue-200 bg-blue-50 dark:bg-neutral-900">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-600 font-medium">In Progress</p>
-                <p className="text-2xl font-bold text-blue-800">
+                <p className="text-sm text-muted-foreground font-medium">
+                  In Progress
+                </p>
+                <p className="text-2xl font-bold text-blue-600">
                   {stats.inProgress}
                 </p>
               </div>
-              <Activity className="h-8 w-8 text-blue-600 dark:bg-neutral-900" />
+              <Activity className="h-8 w-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border-green-200 bg-green-50 dark:bg-neutral-900">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-green-600 font-medium">Completed</p>
-                <p className="text-2xl font-bold text-green-800">
+                <p className="text-sm text-muted-foreground font-medium">
+                  Completed
+                </p>
+                <p className="text-2xl font-bold text-emerald-600">
                   {stats.completed}
                 </p>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-600 dark:bg-neutral-900" />
+              <CheckCircle className="h-8 w-8 text-emerald-500" />
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border-yellow-200 bg-yellow-50 dark:bg-neutral-900">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-yellow-600 font-medium">On Hold</p>
-                <p className="text-2xl font-bold text-yellow-800">
+                <p className="text-sm text-muted-foreground font-medium">
+                  On Hold
+                </p>
+                <p className="text-2xl font-bold text-amber-600">
                   {stats.onHold}
                 </p>
               </div>
-              <PauseCircle className="h-8 w-8 text-yellow-600" />
+              <PauseCircle className="h-8 w-8 text-amber-500" />
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border-orange-200 bg-orange-50 dark:bg-neutral-900">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-orange-600 font-medium">
+                <p className="text-sm text-muted-foreground font-medium">
                   High Priority
                 </p>
-                <p className="text-2xl font-bold text-orange-800">
+                <p className="text-2xl font-bold text-orange-600">
                   {stats.highPriority}
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-orange-600" />
+              <TrendingUp className="h-8 w-8 text-orange-500" />
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border-red-200 bg-red-50 dark:bg-neutral-900">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-red-600 font-medium">Overdue</p>
-                <p className="text-2xl font-bold text-red-800">
+                <p className="text-sm text-muted-foreground font-medium">
+                  Overdue
+                </p>
+                <p className="text-2xl font-bold text-red-600">
                   {stats.overdue}
                 </p>
               </div>
-              <AlertCircle className="h-8 w-8 text-red-600" />
+              <AlertCircle className="h-8 w-8 text-red-500" />
             </div>
           </CardContent>
         </Card>
@@ -397,11 +415,11 @@ const ProjectsPage = () => {
             No projects found
           </h3>
           <p className="text-gray-600 mb-4 dark:text-slate-200">
-            {user?.role === Role.ADMIN && searchTerm
+            {searchTerm
               ? "Try adjusting your search filters"
               : Permissions.canCreateProjects(user?.role || Role.GUEST)
-              ? "Get started by creating your first project"
-              : "No projects have been assigned to you yet"}
+                ? "Get started by creating your first project"
+                : "No projects have been assigned to you yet"}
           </p>
         </div>
       ) : (
@@ -421,7 +439,10 @@ const ProjectsPage = () => {
                       <CardTitle className="text-lg flex items-center gap-2">
                         <span className="truncate">{project.title}</span>
                         {userRole && (
-                          <Badge variant="outline" className={`text-xs ${getRoleBadgeStyle(userRole)}`}>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${getRoleBadgeStyle(userRole)}`}
+                          >
                             {userRole}
                           </Badge>
                         )}
@@ -539,10 +560,10 @@ const ProjectsPage = () => {
                         {project.status === ProjectStatus.COMPLETED
                           ? "Completed"
                           : project.status === ProjectStatus.IN_PROGRESS
-                          ? "In Progress"
-                          : project.status === ProjectStatus.ON_HOLD
-                          ? "On Hold"
-                          : "Not Started"}
+                            ? "In Progress"
+                            : project.status === ProjectStatus.ON_HOLD
+                              ? "On Hold"
+                              : "Not Started"}
                       </span>
                     </div>
                   </div>

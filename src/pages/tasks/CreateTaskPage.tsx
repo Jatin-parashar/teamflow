@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Priority, RequestStatus, TaskStatus } from "@/features/types";
+import type { ProjectMember } from "@/features/projectSlice";
 import { ArrowLeft, Plus } from "lucide-react";
 import { logActivity } from "@/firebase/activityLog";
 
@@ -38,7 +39,7 @@ const CreateTaskPage = () => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    status: "To Do" as TaskStatus,
+    status: TaskStatus.TO_DO as TaskStatus,
     priority: Priority.MEDIUM as Priority,
     projectId: "",
     assignedTo: "",
@@ -46,7 +47,7 @@ const CreateTaskPage = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [availableMembers, setAvailableMembers] = useState<any[]>([]);
+  const [availableMembers, setAvailableMembers] = useState<ProjectMember[]>([]);
 
   useEffect(() => {
     dispatch(fetchProjects());
@@ -109,7 +110,7 @@ const CreateTaskPage = () => {
 
     const selectedProject = projects.find((p) => p.id === formData.projectId);
     const selectedAssignee = availableMembers.find(
-      (m) => m.userId === formData.assignedTo,
+      (m) => m.userId === formData.assignedTo
     );
 
     if (!selectedProject || !selectedAssignee || !user) {
@@ -135,13 +136,20 @@ const CreateTaskPage = () => {
     try {
       const result = await dispatch(createTask(taskData));
       if (createTask.fulfilled.match(result)) {
-        await logActivity(user.id, user.name, "Created task", "task", result.payload.id, formData.title.trim());
+        await logActivity(
+          user.id,
+          user.name,
+          "Created task",
+          "task",
+          result.payload.id,
+          formData.title.trim()
+        );
         toast.success("Task created successfully!");
         navigate("/tasks");
       } else {
         toast.error((result.payload as string) || "Failed to create task");
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to create task");
     }
   };
@@ -152,7 +160,6 @@ const CreateTaskPage = () => {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
-
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -177,9 +184,7 @@ const CreateTaskPage = () => {
       {hasProjects ? (
         <Card>
           <CardHeader>
-            <CardTitle
-              className="flex items-center gap-2"
-            >
+            <CardTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5" />
               Task Details
             </CardTitle>
@@ -280,12 +285,22 @@ const CreateTaskPage = () => {
                     onValueChange={(value) =>
                       handleInputChange("assignedTo", value)
                     }
-                    disabled={!formData.projectId}
+                    disabled={
+                      !formData.projectId || availableMembers.length === 0
+                    }
                   >
                     <SelectTrigger
                       className={errors.assignedTo ? "border-red-500" : ""}
                     >
-                      <SelectValue placeholder="Select assignee" />
+                      <SelectValue
+                        placeholder={
+                          !formData.projectId
+                            ? "Select a project first"
+                            : availableMembers.length === 0
+                              ? "No members in this project"
+                              : "Select assignee"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {availableMembers.map((member) => (

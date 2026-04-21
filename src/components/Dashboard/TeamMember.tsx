@@ -6,8 +6,18 @@ import { Progress } from "@/components/ui/progress";
 import { fetchTasks } from "@/features/taskSlice";
 import { fetchProjects } from "@/features/projectSlice";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
-import { CheckCircle, Clock, AlertTriangle, Calendar, FolderOpen } from "lucide-react";
+import { TaskStatus, Priority } from "@/features/types";
+import {
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Calendar,
+  FolderOpen,
+} from "lucide-react";
 import { Link } from "react-router";
+
+const DAYS_IN_MS = 1000 * 60 * 60 * 24;
+const UPCOMING_DAYS = 7;
 
 const TeamMemberDashboard = () => {
   const dispatch = useAppDispatch();
@@ -27,12 +37,13 @@ const TeamMemberDashboard = () => {
 
   const taskStats = {
     total: myTasks.length,
-    done: myTasks.filter((t) => t.status === "Done").length,
-    inProgress: myTasks.filter((t) => t.status === "In Progress").length,
-    todo: myTasks.filter((t) => t.status === "To Do").length,
-    blocked: myTasks.filter((t) => t.status === "Blocked").length,
+    done: myTasks.filter((t) => t.status === TaskStatus.DONE).length,
+    inProgress: myTasks.filter((t) => t.status === TaskStatus.IN_PROGRESS)
+      .length,
+    todo: myTasks.filter((t) => t.status === TaskStatus.TO_DO).length,
+    blocked: myTasks.filter((t) => t.status === TaskStatus.BLOCKED).length,
     overdue: myTasks.filter(
-      (t) => new Date(t.dueDate) < new Date() && t.status !== "Done"
+      (t) => new Date(t.dueDate) < new Date() && t.status !== TaskStatus.DONE
     ).length,
   };
 
@@ -42,8 +53,10 @@ const TeamMemberDashboard = () => {
   const upcomingTasks = myTasks.filter((task) => {
     const dueDate = new Date(task.dueDate);
     const today = new Date();
-    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-    return dueDate >= today && dueDate <= nextWeek && task.status !== "Done";
+    const nextWeek = new Date(today.getTime() + UPCOMING_DAYS * DAYS_IN_MS);
+    return (
+      dueDate >= today && dueDate <= nextWeek && task.status !== TaskStatus.DONE
+    );
   });
 
   return (
@@ -116,7 +129,7 @@ const TeamMemberDashboard = () => {
             <Progress value={completionRate} className="h-2" />
             <div className="grid grid-cols-4 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold text-gray-600">
+                <div className="text-2xl font-bold text-muted-foreground">
                   {taskStats.todo}
                 </div>
                 <div className="text-xs text-muted-foreground">To Do</div>
@@ -157,7 +170,7 @@ const TeamMemberDashboard = () => {
           <CardContent>
             <div className="space-y-3">
               {myTasks
-                .filter((task) => task.status !== "Done")
+                .filter((task) => task.status !== TaskStatus.DONE)
                 .slice(0, 5)
                 .map((task) => (
                   <div
@@ -166,11 +179,11 @@ const TeamMemberDashboard = () => {
                   >
                     <div
                       className={`w-3 h-3 rounded-full ${
-                        task.status === "In Progress"
+                        task.status === TaskStatus.IN_PROGRESS
                           ? "bg-blue-500"
-                          : task.status === "Blocked"
-                          ? "bg-red-500"
-                          : "bg-gray-400"
+                          : task.status === TaskStatus.BLOCKED
+                            ? "bg-red-500"
+                            : "bg-gray-400"
                       }`}
                     />
                     <div className="flex-1">
@@ -183,11 +196,11 @@ const TeamMemberDashboard = () => {
                     <div className="flex flex-col items-end gap-1">
                       <Badge
                         variant={
-                          task.priority === "Critical"
+                          task.priority === Priority.CRITICAL
                             ? "destructive"
-                            : task.priority === "High"
-                            ? "default"
-                            : "secondary"
+                            : task.priority === Priority.HIGH
+                              ? "default"
+                              : "secondary"
                         }
                         className="text-xs"
                       >
@@ -199,8 +212,8 @@ const TeamMemberDashboard = () => {
                     </div>
                   </div>
                 ))}
-              {myTasks.filter((task) => task.status !== "Done").length ===
-                0 && (
+              {myTasks.filter((task) => task.status !== TaskStatus.DONE)
+                .length === 0 && (
                 <p className="text-center text-muted-foreground py-4">
                   No active tasks at the moment
                 </p>
@@ -219,7 +232,7 @@ const TeamMemberDashboard = () => {
                 const dueDate = new Date(task.dueDate);
                 const today = new Date();
                 const daysUntilDue = Math.ceil(
-                  (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+                  (dueDate.getTime() - today.getTime()) / DAYS_IN_MS
                 );
 
                 return (
@@ -239,15 +252,15 @@ const TeamMemberDashboard = () => {
                           daysUntilDue <= 1
                             ? "text-red-600"
                             : daysUntilDue <= 3
-                            ? "text-orange-600"
-                            : "text-green-600"
+                              ? "text-orange-600"
+                              : "text-green-600"
                         }`}
                       >
                         {daysUntilDue === 0
                           ? "Today"
                           : daysUntilDue === 1
-                          ? "Tomorrow"
-                          : `${daysUntilDue} days`}
+                            ? "Tomorrow"
+                            : `${daysUntilDue} days`}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {dueDate.toLocaleDateString()}
@@ -283,7 +296,7 @@ const TeamMemberDashboard = () => {
                 (task) => task.projectId === project.id
               );
               const completedTasks = projectTasks.filter(
-                (task) => task.status === "Done"
+                (task) => task.status === TaskStatus.DONE
               ).length;
               const projectProgress =
                 projectTasks.length > 0

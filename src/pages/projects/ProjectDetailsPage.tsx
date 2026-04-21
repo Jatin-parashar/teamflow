@@ -7,6 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft,
   Calendar,
   Edit,
@@ -16,7 +27,6 @@ import {
   FileText,
   AlertCircle,
   CheckCircle,
-  Mail,
   Shield,
   Loader2,
 } from "lucide-react";
@@ -58,22 +68,22 @@ const ProjectDetailsPage = () => {
   }, [dispatch, id]);
 
   const handleDeleteProject = async () => {
-    if (
-      !currentProject ||
-      !window.confirm(
-        "Are you sure you want to delete this project? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
+    if (!currentProject) return;
     setIsDeleting(true);
     try {
       await dispatch(deleteProject(currentProject.id)).unwrap();
-      await logActivity(user!.id, user!.name, "Deleted project", "project", currentProject.id, currentProject.title);
+      if (user)
+        await logActivity(
+          user.id,
+          user.name,
+          "Deleted project",
+          "project",
+          currentProject.id,
+          currentProject.title
+        );
       toast.success("Project deleted successfully");
       navigate("/projects");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to delete project");
     } finally {
       setIsDeleting(false);
@@ -89,7 +99,10 @@ const ProjectDetailsPage = () => {
   };
 
   const canEditProject = () => {
-    return user ? Permissions.canEditProject(user.role) || currentProject?.managerId === user?.id : false;
+    return user
+      ? Permissions.canEditProject(user.role) ||
+          currentProject?.managerId === user?.id
+      : false;
   };
 
   const canDeleteProject = () => {
@@ -163,18 +176,37 @@ const ProjectDetailsPage = () => {
             </Button>
           )}
           {canDeleteProject() && (
-            <Button
-              variant="destructive"
-              onClick={handleDeleteProject}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Delete
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={isDeleting}>
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{currentProject.title}"?
+                    This will permanently delete the project and all associated
+                    tasks.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteProject}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Delete Project
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </div>
@@ -230,7 +262,9 @@ const ProjectDetailsPage = () => {
                   <h4 className="font-medium mb-2">End Date</h4>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    {currentProject.endDate ? formatDate(currentProject.endDate) : "Not set"}
+                    {currentProject.endDate
+                      ? formatDate(currentProject.endDate)
+                      : "Not set"}
                   </div>
                 </div>
               </div>
@@ -355,10 +389,11 @@ const ProjectDetailsPage = () => {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">{currentProject.managerName}</p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Mail className="h-3 w-3" />
-                    {currentProject.managerId}
+                  <p className="font-medium">
+                    {currentProject.managerName || "Unassigned"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Project Manager
                   </p>
                 </div>
               </div>
@@ -420,19 +455,22 @@ const ProjectDetailsPage = () => {
               <div className="flex justify-between">
                 <span className="text-sm">Completed</span>
                 <span className="font-medium text-green-600">
-                  {tasks.filter((t) => t.status === "Done").length}
+                  {tasks.filter((t) => t.status === TaskStatus.DONE).length}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">In Progress</span>
                 <span className="font-medium text-blue-600">
-                  {tasks.filter((t) => t.status === "In Progress").length}
+                  {
+                    tasks.filter((t) => t.status === TaskStatus.IN_PROGRESS)
+                      .length
+                  }
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Blocked</span>
                 <span className="font-medium text-red-600">
-                  {tasks.filter((t) => t.status === "Blocked").length}
+                  {tasks.filter((t) => t.status === TaskStatus.BLOCKED).length}
                 </span>
               </div>
               <Separator />

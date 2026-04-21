@@ -19,9 +19,13 @@ const labelMap: Record<string, string> = {
   create: "Create",
   edit: "Edit",
   tasks: "Tasks",
+  activity: "Activity",
   unauthorized: "Unauthorized",
   login: "Login",
   register: "Register",
+  admin: "Admin",
+  users: "Users",
+  "manage-members": "Manage Members",
 };
 
 export default function Breadcrumbs() {
@@ -32,9 +36,7 @@ export default function Breadcrumbs() {
   const currentProject = useAppSelector(
     (state) => state.projects.currentProject
   );
-  const currentTask = useAppSelector(
-    (state) => state.tasks.currentTask
-  );
+  const currentTask = useAppSelector((state) => state.tasks.currentTask);
 
   const segments = location.pathname.split("/").filter(Boolean);
 
@@ -83,7 +85,7 @@ export default function Breadcrumbs() {
   };
 
   const breadcrumbs = segments.map((segment, index) => {
-    const href = getBreadcrumbHref( index);
+    const href = getBreadcrumbHref(index);
     const isLast = index === segments.length - 1;
     const label = getSegmentLabel(segment);
 
@@ -98,7 +100,9 @@ export default function Breadcrumbs() {
             <BreadcrumbPage>{label}</BreadcrumbPage>
           )}
         </BreadcrumbItem>
-        {!isLast && <BreadcrumbSeparator className="text-black dark:text-white" />}
+        {!isLast && (
+          <BreadcrumbSeparator className="text-black dark:text-white" />
+        )}
       </Fragment>
     );
   });
@@ -115,7 +119,9 @@ export default function Breadcrumbs() {
             <Link to="/">Home</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
-        {segments.length > 0 && <BreadcrumbSeparator className="text-black dark:text-white" />}
+        {segments.length > 0 && (
+          <BreadcrumbSeparator className="text-black dark:text-white" />
+        )}
         {breadcrumbs}
       </BreadcrumbList>
     </Breadcrumb>

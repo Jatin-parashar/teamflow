@@ -1,0 +1,8 @@
+# Prevent direct push to main or develop
+branch=$(git symbolic-ref HEAD | sed -e 's,.*/\(.*\),\1,')
+if [ "$branch" = "main" ] || [ "$branch" = "develop" ]; then
+  echo "Direct push to '$branch' is not allowed. Use a feature branch and open a PR."
+  exit 1
+fi
+
+npm run build

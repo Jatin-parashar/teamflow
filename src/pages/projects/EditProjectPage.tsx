@@ -31,7 +31,12 @@ import {
 import { toast } from "sonner";
 import { fetchProjectById, updateProject } from "@/features/projectSlice";
 import { logActivity } from "@/firebase/activityLog";
-import { Priority, RequestStatus, type ProjectStatus } from "@/features/types";
+import {
+  Priority,
+  ProjectStatus,
+  RequestStatus,
+  type ProjectStatus as PS,
+} from "@/features/types";
 import LoaderIcon from "@/components/ui/loader";
 
 const EditProjectPage = () => {
@@ -46,7 +51,7 @@ const EditProjectPage = () => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    status: "Not Started" as ProjectStatus,
+    status: ProjectStatus.NOT_STARTED as PS,
     priority: Priority.MEDIUM as Priority,
     startDate: "",
     endDate: "",
@@ -68,8 +73,12 @@ const EditProjectPage = () => {
         description: currentProject.description,
         status: currentProject.status,
         priority: currentProject.priority,
-        startDate: currentProject.startDate.split("T")[0], // Convert to date input format
-        endDate: currentProject.endDate.split("T")[0], // Convert to date input format
+        startDate: currentProject.startDate
+          ? currentProject.startDate.split("T")[0]
+          : "",
+        endDate: currentProject.endDate
+          ? currentProject.endDate.split("T")[0]
+          : "",
       });
     }
   }, [currentProject]);
@@ -130,10 +139,18 @@ const EditProjectPage = () => {
           },
         })
       ).unwrap();
-      if (user) await logActivity(user.id, user.name, "Updated project", "project", id, formData.title.trim());
+      if (user)
+        await logActivity(
+          user.id,
+          user.name,
+          "Updated project",
+          "project",
+          id,
+          formData.title.trim()
+        );
       toast.success("Project updated successfully!");
       navigate(`/projects/${id}`);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to update project");
     } finally {
       setIsSubmitting(false);
@@ -156,9 +173,7 @@ const EditProjectPage = () => {
   };
 
   if (status === RequestStatus.LOADING) {
-    return (
-      <LoaderIcon />
-    );
+    return <LoaderIcon />;
   }
 
   if (error) {
@@ -283,10 +298,18 @@ const EditProjectPage = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Not Started">Not Started</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="On Hold">On Hold</SelectItem>
+                      <SelectItem value={ProjectStatus.NOT_STARTED}>
+                        Not Started
+                      </SelectItem>
+                      <SelectItem value={ProjectStatus.IN_PROGRESS}>
+                        In Progress
+                      </SelectItem>
+                      <SelectItem value={ProjectStatus.COMPLETED}>
+                        Completed
+                      </SelectItem>
+                      <SelectItem value={ProjectStatus.ON_HOLD}>
+                        On Hold
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

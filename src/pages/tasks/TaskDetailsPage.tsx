@@ -40,7 +40,12 @@ import {
   MessageSquare,
   Activity,
 } from "lucide-react";
-import { RequestStatus, Permissions, type TaskStatus } from "@/features/types";
+import {
+  RequestStatus,
+  Permissions,
+  type TaskStatus,
+  TaskStatus as TS,
+} from "@/features/types";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import LoaderIcon from "@/components/ui/loader";
@@ -69,10 +74,18 @@ const TaskDetailsPage = () => {
 
     try {
       await dispatch(deleteTask(currentTask.id)).unwrap();
-      await logActivity(user!.id, user!.name, "Deleted task", "task", currentTask.id, currentTask.title);
+      if (user)
+        await logActivity(
+          user.id,
+          user.name,
+          "Deleted task",
+          "task",
+          currentTask.id,
+          currentTask.title
+        );
       toast.success("Task deleted successfully");
       navigate("/tasks");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to delete task");
     }
   };
@@ -89,7 +102,7 @@ const TaskDetailsPage = () => {
         })
       ).unwrap();
       toast.success("Task status updated successfully");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to update task status");
     } finally {
       setIsUpdatingStatus(false);
@@ -98,17 +111,20 @@ const TaskDetailsPage = () => {
 
   const canEditTask = user ? Permissions.canEditTasks(user.role) : false;
   const canDeleteTask = user ? Permissions.canDeleteTasks(user.role) : false;
-  const canUpdateStatus = user ? Permissions.canUpdateTaskStatus(user.role) || currentTask?.assignedTo === user?.id : false;
+  const canUpdateStatus = user
+    ? Permissions.canUpdateTaskStatus(user.role) ||
+      currentTask?.assignedTo === user?.id
+    : false;
 
   if (status === RequestStatus.LOADING) {
     return <LoaderIcon />;
   }
 
-  if (status === "failed" || !currentTask) {
+  if (status === RequestStatus.FAILED || !currentTask) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-semibold text-foreground">
             {error || "Task not found"}
           </h2>
           <p className="text-gray-500 dark:text-neutral-300 mt-2">
@@ -123,9 +139,10 @@ const TaskDetailsPage = () => {
   }
 
   const project = projects.find((p) => p.id === currentTask.projectId);
-  const daysUntilDue = differenceInDays(new Date(currentTask.dueDate), new Date());
-  const isOverdue = daysUntilDue < 0;
-  const isDueSoon = daysUntilDue <= 3 && daysUntilDue >= 0;
+  const dueDate = currentTask.dueDate ? new Date(currentTask.dueDate) : null;
+  const daysUntilDue = dueDate ? differenceInDays(dueDate, new Date()) : 0;
+  const isOverdue = dueDate ? daysUntilDue < 0 : false;
+  const isDueSoon = dueDate ? daysUntilDue <= 3 && daysUntilDue >= 0 : false;
 
   return (
     <div className="space-y-6">
@@ -227,10 +244,12 @@ const TaskDetailsPage = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="To Do">To Do</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Done">Done</SelectItem>
-                        <SelectItem value="Blocked">Blocked</SelectItem>
+                        <SelectItem value={TS.TO_DO}>To Do</SelectItem>
+                        <SelectItem value={TS.IN_PROGRESS}>
+                          In Progress
+                        </SelectItem>
+                        <SelectItem value={TS.DONE}>Done</SelectItem>
+                        <SelectItem value={TS.BLOCKED}>Blocked</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -255,14 +274,20 @@ const TaskDetailsPage = () => {
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-500">Created</span>
                 <span className="text-sm font-medium">
-                  {format(new Date(currentTask.createdAt), "MMM dd, yyyy 'at' h:mm a")}
+                  {format(
+                    new Date(currentTask.createdAt),
+                    "MMM dd, yyyy 'at' h:mm a"
+                  )}
                 </span>
               </div>
               <Separator />
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-500">Last Updated</span>
                 <span className="text-sm font-medium">
-                  {format(new Date(currentTask.updatedAt), "MMM dd, yyyy 'at' h:mm a")}
+                  {format(
+                    new Date(currentTask.updatedAt),
+                    "MMM dd, yyyy 'at' h:mm a"
+                  )}
                 </span>
               </div>
               {currentTask.completedAt && (
@@ -271,7 +296,10 @@ const TaskDetailsPage = () => {
                   <div className="flex items-center justify-between py-2">
                     <span className="text-sm text-gray-500">Completed</span>
                     <span className="text-sm font-medium text-green-600">
-                      {format(new Date(currentTask.completedAt), "MMM dd, yyyy 'at' h:mm a")}
+                      {format(
+                        new Date(currentTask.completedAt),
+                        "MMM dd, yyyy 'at' h:mm a"
+                      )}
                     </span>
                   </div>
                 </>
@@ -325,11 +353,11 @@ const TaskDetailsPage = () => {
                       isOverdue
                         ? "text-red-600"
                         : isDueSoon
-                        ? "text-orange-600"
-                        : "text-gray-900"
+                          ? "text-orange-600"
+                          : "text-gray-900"
                     }`}
                   >
-                    {format(new Date(currentTask.dueDate), "MMM dd, yyyy")}
+                    {dueDate ? format(dueDate, "MMM dd, yyyy") : "Not set"}
                   </span>
                 </div>
               </div>
@@ -343,8 +371,8 @@ const TaskDetailsPage = () => {
                     {isOverdue
                       ? `${Math.abs(daysUntilDue)} days overdue`
                       : isDueSoon
-                      ? `Due in ${daysUntilDue} days`
-                      : ""}
+                        ? `Due in ${daysUntilDue} days`
+                        : ""}
                   </Badge>
                 </div>
               )}

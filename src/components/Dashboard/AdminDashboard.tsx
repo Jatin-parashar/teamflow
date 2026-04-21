@@ -49,7 +49,9 @@ const AdminDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Blocked Tasks</p>
-            <p className="text-xl font-bold text-red-500">{taskStats.blocked}</p>
+            <p className="text-xl font-bold text-red-500">
+              {taskStats.blocked}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -109,7 +111,10 @@ const AdminDashboard = () => {
                     <p className="font-medium">{project.title}</p>
                     <p className="text-sm text-muted-foreground">
                       Tasks: {projectTasks.length} | Done:{" "}
-                      {projectTasks.filter((t) => t.status === TaskStatus.DONE).length}
+                      {
+                        projectTasks.filter((t) => t.status === TaskStatus.DONE)
+                          .length
+                      }
                     </p>
                   </CardContent>
                 </Card>
@@ -122,4 +127,4 @@ const AdminDashboard = () => {
   );
 };
 
-export
+export default AdminDashboard;

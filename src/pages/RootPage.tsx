@@ -37,7 +37,7 @@ import {
   Activity,
 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router";
-import { Permissions } from "@/features/types";
+import { Permissions, Role } from "@/features/types";
 import { getInitials, getRoleBadgeStyle } from "@/utils/roleUtilities";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useEffect } from "react";
@@ -232,7 +232,7 @@ const RootPage = () => {
                         <div className="flex items-center gap-2">
                           <Badge
                             variant="outline"
-                            className={`text-xs ${getRoleBadgeStyle(user?.role || "Member")}`}
+                            className={`text-xs ${getRoleBadgeStyle(user?.role || Role.MEMBER)}`}
                           >
                             {user?.role}
                           </Badge>

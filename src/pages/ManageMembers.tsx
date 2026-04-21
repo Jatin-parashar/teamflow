@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
-import {
-  fetchProjects,
-  removeProjectMember,
-} from "@/features/projectSlice";
+import { fetchProjects, removeProjectMember } from "@/features/projectSlice";
 import {
   Card,
   CardContent,
@@ -24,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Trash2, Users, Search, Filter } from "lucide-react";
-import { Role, RequestStatus } from "@/features/types";
+import { Role, RequestStatus, Permissions } from "@/features/types";
 import { getInitials, getRoleBadgeStyle } from "@/utils/roleUtilities";
 import RoleIcon from "@/components/RoleIcon";
 import { toast } from "sonner";
@@ -66,13 +63,14 @@ const ManageMembers = () => {
         })
       ).unwrap();
       toast.success(`${memberName} removed from project`);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to remove member");
     }
   };
 
-  const canManageMembers =
-    user?.role === Role.ADMIN || user?.role === Role.MANAGER;
+  const canManageMembers = user
+    ? Permissions.canManageMembers(user.role)
+    : false;
 
   if (status === RequestStatus.LOADING) {
     return <LoaderIcon />;
@@ -200,25 +198,21 @@ const ManageMembers = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className={badgeStyle}
-                          >
+                          <Badge variant="outline" className={badgeStyle}>
                             {member.role}
                           </Badge>
-                          {canManageMembers &&
-                            member.userId !== user?.id && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  handleRemoveMember(member.userId, member.name)
-                                }
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
+                          {canManageMembers && member.userId !== user?.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleRemoveMember(member.userId, member.name)
+                              }
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );

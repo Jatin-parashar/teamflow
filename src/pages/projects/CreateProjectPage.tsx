@@ -65,18 +65,12 @@ const CreateProjectPage = () => {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  if (!user || !Permissions.canCreateProjects(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
-  }
-
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const data = await firebaseFetch<Record<string, Omit<User, 'id'>> | null>('users.json');
+      const data = await firebaseFetch<Record<string, Omit<User, "id">> | null>(
+        "users.json"
+      );
 
       if (data) {
         const users: User[] = Object.keys(data).map((key) => ({
@@ -87,12 +81,20 @@ const CreateProjectPage = () => {
         setAvailableManagers(users.filter((u) => u.role === Role.MANAGER));
         setAvailableMembers(users.filter((u) => u.role === Role.MEMBER));
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to fetch users");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  if (!user || !Permissions.canCreateProjects(user.role)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -156,10 +158,17 @@ const CreateProjectPage = () => {
 
     try {
       await dispatch(createProject(projectData)).unwrap();
-      await logActivity(user.id, user.name, "Created project", "project", formData.title, formData.title.trim());
+      await logActivity(
+        user.id,
+        user.name,
+        "Created project",
+        "project",
+        formData.title,
+        formData.title.trim()
+      );
       toast.success("Project created successfully!");
       navigate("/projects");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to create project");
     }
   };
@@ -208,9 +217,7 @@ const CreateProjectPage = () => {
           Back to Projects
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">
-            Create New Project
-          </h1>
+          <h1 className="text-3xl font-bold">Create New Project</h1>
           <p className="text-muted-foreground">
             Create and assign a new project (Admin Only)
           </p>
@@ -287,8 +294,12 @@ const CreateProjectPage = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Not Started">Not Started</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value={ProjectStatus.NOT_STARTED}>
+                        Not Started
+                      </SelectItem>
+                      <SelectItem value={ProjectStatus.IN_PROGRESS}>
+                        In Progress
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -377,7 +388,8 @@ const CreateProjectPage = () => {
                 </Select>
                 {availableManagers.length === 0 && !loading && (
                   <p className="text-sm text-amber-600">
-                    No users with Manager role found. Go to User Management to assign the Manager role to a user first.
+                    No users with Manager role found. Go to User Management to
+                    assign the Manager role to a user first.
                   </p>
                 )}
                 {formErrors.managerId && (
