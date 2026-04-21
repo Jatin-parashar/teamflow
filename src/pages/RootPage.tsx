@@ -41,6 +41,11 @@ import { Permissions, Role } from "@/features/types";
 import { getInitials, getRoleBadgeStyle } from "@/utils/roleUtilities";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useEffect } from "react";
+import NotificationBell from "@/components/NotificationBell";
+import {
+  startNotificationListener,
+  clearNotificationState,
+} from "@/firebase/notifications";
 
 const SidebarAutoClose = () => {
   const { setOpenMobile } = useSidebar();
@@ -56,6 +61,16 @@ const SidebarAutoClose = () => {
 const RootPage = () => {
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
+
+  // Start real-time notification listener when user is logged in
+  useEffect(() => {
+    if (user?.id) {
+      startNotificationListener(user.id, dispatch);
+    }
+    return () => {
+      clearNotificationState(dispatch);
+    };
+  }, [user?.id, dispatch]);
 
   interface MenuItem {
     title: string;
@@ -212,6 +227,7 @@ const RootPage = () => {
                 <Breadcrumbs />
               </div>
               <div className="flex items-center gap-3">
+                <NotificationBell />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Avatar className="w-8 h-8 cursor-pointer">
