@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createTask } from "@/features/taskSlice";
 import { fetchProjects } from "@/features/projectSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -14,38 +17,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { toast } from "sonner";
 import { Priority, RequestStatus, TaskStatus } from "@/features/types";
 import type { ProjectMember } from "@/features/projectSlice";
-import { ArrowLeft, Plus } from "lucide-react";
+import { Plus, FolderOpen, Loader2 } from "lucide-react";
 import { logActivity } from "@/firebase/activityLog";
+import PageHeader from "@/components/PageHeader";
+import FormField from "@/components/FormField";
 
 const CreateTaskPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state) => state.auth);
-  const { projects } = useAppSelector((state) => state.projects);
-  const hasProjects = projects && projects.length > 0;
-
-  const { status } = useAppSelector((state) => state.tasks);
+  const { user } = useAppSelector((s) => s.auth);
+  const { projects } = useAppSelector((s) => s.projects);
+  const { status } = useAppSelector((s) => s.tasks);
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     status: TaskStatus.TO_DO as TaskStatus,
     priority: Priority.MEDIUM as Priority,
-    projectId: "",
+    projectId: searchParams.get("projectId") || "",
     assignedTo: "",
     dueDate: "",
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [availableMembers, setAvailableMembers] = useState<ProjectMember[]>([]);
 
@@ -55,86 +51,64 @@ const CreateTaskPage = () => {
 
   useEffect(() => {
     if (formData.projectId) {
-      const selectedProject = projects.find((p) => p.id === formData.projectId);
-      if (selectedProject) {
-        setAvailableMembers(selectedProject.members || []);
-      }
+      const p = projects.find((p) => p.id === formData.projectId);
+      setAvailableMembers(p?.members || []);
+      setFormData((prev) => ({ ...prev, assignedTo: "" }));
     }
   }, [formData.projectId, projects]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.title.trim()) {
-      newErrors.title = "Title is required";
-    } else if (formData.title.trim().length > 100) {
-      newErrors.title = "Title must be under 100 characters";
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = "Description is required";
-    } else if (formData.description.trim().length > 1000) {
-      newErrors.description = "Description must be under 1000 characters";
-    }
-
-    if (!formData.projectId) {
-      newErrors.projectId = "Project is required";
-    }
-
-    if (!formData.assignedTo) {
-      newErrors.assignedTo = "Assignee is required";
-    }
-
-    if (!formData.dueDate) {
-      newErrors.dueDate = "Due date is required";
-    } else {
-      const dueDate = new Date(formData.dueDate);
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!formData.title.trim()) e.title = "Title is required";
+    else if (formData.title.trim().length > 100) e.title = "Max 100 characters";
+    if (!formData.description.trim()) e.description = "Description is required";
+    else if (formData.description.trim().length > 1000)
+      e.description = "Max 1000 characters";
+    if (!formData.projectId) e.projectId = "Project is required";
+    if (!formData.assignedTo) e.assignedTo = "Assignee is required";
+    if (!formData.dueDate) e.dueDate = "Due date is required";
+    else {
+      const due = new Date(formData.dueDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (dueDate < today) {
-        newErrors.dueDate = "Due date cannot be in the past";
-      }
+      if (due < today) e.dueDate = "Due date cannot be in the past";
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
+    if (!validate()) {
       toast.error("Please fix the errors in the form");
       return;
     }
-
     const selectedProject = projects.find((p) => p.id === formData.projectId);
     const selectedAssignee = availableMembers.find(
       (m) => m.userId === formData.assignedTo
     );
-
     if (!selectedProject || !selectedAssignee || !user) {
       toast.error("Missing required information");
       return;
     }
 
-    const taskData = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      status: formData.status,
-      priority: formData.priority,
-      projectId: formData.projectId,
-      projectName: selectedProject.title,
-      assignedTo: formData.assignedTo,
-      assignedToName: selectedAssignee.name,
-      assignedToEmail: selectedAssignee.email,
-      createdBy: user.id,
-      createdByName: user.name,
-      dueDate: formData.dueDate,
-    };
-
     try {
-      const result = await dispatch(createTask(taskData));
+      const result = await dispatch(
+        createTask({
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          status: formData.status,
+          priority: formData.priority,
+          projectId: formData.projectId,
+          projectName: selectedProject.title,
+          assignedTo: formData.assignedTo,
+          assignedToName: selectedAssignee.name,
+          assignedToEmail: selectedAssignee.email,
+          createdBy: user.id,
+          createdByName: user.name,
+          dueDate: formData.dueDate,
+        })
+      );
       if (createTask.fulfilled.match(result)) {
         await logActivity(
           user.id,
@@ -149,228 +123,222 @@ const CreateTaskPage = () => {
       } else {
         toast.error((result.payload as string) || "Failed to create task");
       }
-    } catch (_error) {
+    } catch {
       toast.error("Failed to create task");
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const set = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
+
+  if (!projects.length) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <PageHeader
+          title="Create Task"
+          backTo="/tasks"
+          backLabel="Back to Tasks"
+        />
+        <Alert>
+          <FolderOpen className="h-4 w-4" />
+          <AlertDescription>
+            You must create a project before creating a task.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate("/tasks")}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Tasks
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Create New Task</h1>
-          <p className="text-muted-foreground">
-            Add a new task to your project
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Create New Task"
+        description="Add a new task to your project"
+        backTo="/tasks"
+        backLabel="Back to Tasks"
+      />
 
-      {hasProjects ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              Task Details
-            </CardTitle>
-            <CardDescription>
-              Fill in the information below to create a new task
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Task Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder="Enter task title"
-                    value={formData.title}
-                    maxLength={100}
-                    onChange={(e) => handleInputChange("title", e.target.value)}
-                    className={errors.title ? "border-red-500" : ""}
-                  />
-                  {errors.title && (
-                    <p className="text-sm text-red-500">{errors.title}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="priority">Priority</Label>
-                  <Select
-                    value={formData.priority}
-                    onValueChange={(value) =>
-                      handleInputChange("priority", value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={Priority.LOW}>Low</SelectItem>
-                      <SelectItem value={Priority.MEDIUM}>Medium</SelectItem>
-                      <SelectItem value={Priority.HIGH}>High</SelectItem>
-                      <SelectItem value={Priority.CRITICAL}>
-                        Critical
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Enter task description"
-                  value={formData.description}
-                  maxLength={1000}
-                  onChange={(e) =>
-                    handleInputChange("description", e.target.value)
-                  }
-                  className={errors.description ? "border-red-500" : ""}
-                  rows={4}
+      <Card className="border border-border bg-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Plus className="h-4 w-4 text-muted-foreground" />
+            Task Details
+          </CardTitle>
+        </CardHeader>
+        <Separator />
+        <CardContent className="pt-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                id="title"
+                label="Task Title"
+                required
+                error={errors.title}
+              >
+                <Input
+                  id="title"
+                  placeholder="Enter task title"
+                  value={formData.title}
+                  maxLength={100}
+                  onChange={(e) => set("title", e.target.value)}
+                  className={`h-9 bg-background ${errors.title ? "border-destructive" : ""}`}
                 />
-                {errors.description && (
-                  <p className="text-sm text-red-500">{errors.description}</p>
-                )}
-              </div>
+              </FormField>
+              <FormField id="priority" label="Priority">
+                <Select
+                  value={formData.priority}
+                  onValueChange={(v) => set("priority", v)}
+                >
+                  <SelectTrigger className="h-9 bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={Priority.LOW}>Low</SelectItem>
+                    <SelectItem value={Priority.MEDIUM}>Medium</SelectItem>
+                    <SelectItem value={Priority.HIGH}>High</SelectItem>
+                    <SelectItem value={Priority.CRITICAL}>Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="project">Project *</Label>
-                  <Select
-                    value={formData.projectId}
-                    onValueChange={(value) =>
-                      handleInputChange("projectId", value)
-                    }
+            <FormField
+              id="description"
+              label="Description"
+              required
+              error={errors.description}
+            >
+              <Textarea
+                id="description"
+                placeholder="Enter task description"
+                value={formData.description}
+                maxLength={1000}
+                rows={4}
+                onChange={(e) => set("description", e.target.value)}
+                className={`bg-background resize-none ${errors.description ? "border-destructive" : ""}`}
+              />
+            </FormField>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                id="project"
+                label="Project"
+                required
+                error={errors.projectId}
+              >
+                <Select
+                  value={formData.projectId}
+                  onValueChange={(v) => set("projectId", v)}
+                >
+                  <SelectTrigger
+                    className={`h-9 bg-background ${errors.projectId ? "border-destructive" : ""}`}
                   >
-                    <SelectTrigger
-                      className={errors.projectId ? "border-red-500" : ""}
-                    >
-                      <SelectValue placeholder="Select project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.projectId && (
-                    <p className="text-sm text-red-500">{errors.projectId}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="assignedTo">Assign To *</Label>
-                  <Select
-                    value={formData.assignedTo}
-                    onValueChange={(value) =>
-                      handleInputChange("assignedTo", value)
-                    }
-                    disabled={
-                      !formData.projectId || availableMembers.length === 0
-                    }
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField
+                id="assignedTo"
+                label="Assign To"
+                required
+                error={errors.assignedTo}
+              >
+                <Select
+                  value={formData.assignedTo}
+                  onValueChange={(v) => set("assignedTo", v)}
+                  disabled={
+                    !formData.projectId || availableMembers.length === 0
+                  }
+                >
+                  <SelectTrigger
+                    className={`h-9 bg-background ${errors.assignedTo ? "border-destructive" : ""}`}
                   >
-                    <SelectTrigger
-                      className={errors.assignedTo ? "border-red-500" : ""}
-                    >
-                      <SelectValue
-                        placeholder={
-                          !formData.projectId
-                            ? "Select a project first"
-                            : availableMembers.length === 0
-                              ? "No members in this project"
-                              : "Select assignee"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableMembers.map((member) => (
-                        <SelectItem key={member.userId} value={member.userId}>
-                          {member.name} ({member.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.assignedTo && (
-                    <p className="text-sm text-red-500">{errors.assignedTo}</p>
-                  )}
-                </div>
-              </div>
+                    <SelectValue
+                      placeholder={
+                        !formData.projectId
+                          ? "Select a project first"
+                          : availableMembers.length === 0
+                            ? "No members in this project"
+                            : "Select assignee"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableMembers.map((m) => (
+                      <SelectItem key={m.userId} value={m.userId}>
+                        {m.name} ({m.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <Label htmlFor="status">Status</Label>
-                  <div className="text-xs font-semibold border inline py-2 px-4 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField id="status" label="Initial Status">
+                <div className="h-9 flex items-center">
+                  <Badge variant="outline" className="text-sm">
                     {TaskStatus.TO_DO}
-                  </div>
+                  </Badge>
                 </div>
+              </FormField>
+              <FormField
+                id="dueDate"
+                label="Due Date"
+                required
+                error={errors.dueDate}
+              >
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => set("dueDate", e.target.value)}
+                  className={`h-9 bg-background ${errors.dueDate ? "border-destructive" : ""}`}
+                />
+              </FormField>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="dueDate">Due Date *</Label>
-                  <Input
-                    id="dueDate"
-                    type="date"
-                    value={formData.dueDate}
-                    onChange={(e) =>
-                      handleInputChange("dueDate", e.target.value)
-                    }
-                    className={errors.dueDate ? "border-red-500" : ""}
-                  />
-                  {errors.dueDate && (
-                    <p className="text-sm text-red-500">{errors.dueDate}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-6">
-                <Button
-                  type="submit"
-                  className={`text-neutral-100 bg-neutral-600 cursor-pointer hover:text-white hover:bg-neutral-800`}
-                  disabled={status === RequestStatus.LOADING}
-                >
-                  {status === RequestStatus.LOADING
-                    ? "Creating..."
-                    : "Create Task"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate("/tasks")}
-                  disabled={status === RequestStatus.LOADING}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="text-center py-20">
-          <h2 className="text-xl font-semibold mb-2">No projects found</h2>
-          <p className="text-muted-foreground mb-6">
-            You must create a project before creating a task.
-          </p>
-        </div>
-      )}
+            <Separator />
+            <div className="flex gap-3">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={status === RequestStatus.LOADING}
+              >
+                {status === RequestStatus.LOADING ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Create Task
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/tasks")}
+                disabled={status === RequestStatus.LOADING}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

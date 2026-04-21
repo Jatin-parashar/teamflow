@@ -1,17 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -19,15 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertCircle,
-  ArrowLeft,
-  Calendar,
-  FileText,
-  Loader2,
-  Save,
-  Users,
-} from "lucide-react";
 import { toast } from "sonner";
 import { fetchProjectById, updateProject } from "@/features/projectSlice";
 import { logActivity } from "@/firebase/activityLog";
@@ -38,15 +24,23 @@ import {
   type ProjectStatus as PS,
 } from "@/features/types";
 import LoaderIcon from "@/components/ui/loader";
+import PageHeader from "@/components/PageHeader";
+import FormField from "@/components/FormField";
+import {
+  FileText,
+  Calendar,
+  Users,
+  Save,
+  Loader2,
+  TriangleAlert,
+} from "lucide-react";
 
 const EditProjectPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { currentProject, status, error } = useAppSelector(
-    (state) => state.projects
-  );
-  const { user } = useAppSelector((state) => state.auth);
+  const { currentProject, status, error } = useAppSelector((s) => s.projects);
+  const { user } = useAppSelector((s) => s.auth);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -56,14 +50,11 @@ const EditProjectPage = () => {
     startDate: "",
     endDate: "",
   });
-
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      dispatch(fetchProjectById(id));
-    }
+    if (id) dispatch(fetchProjectById(id));
   }, [dispatch, id]);
 
   useEffect(() => {
@@ -83,48 +74,28 @@ const EditProjectPage = () => {
     }
   }, [currentProject]);
 
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.title.trim()) {
-      errors.title = "Project title is required";
-    } else if (formData.title.trim().length > 100) {
-      errors.title = "Project title must be under 100 characters";
-    }
-
-    if (!formData.description.trim()) {
-      errors.description = "Project description is required";
-    } else if (formData.description.trim().length > 1000) {
-      errors.description = "Description must be under 1000 characters";
-    }
-
-    if (!formData.startDate) {
-      errors.startDate = "Start date is required";
-    }
-
-    if (!formData.endDate) {
-      errors.endDate = "End date is required";
-    }
-
-    if (formData.startDate && formData.endDate) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
-      if (start >= end) {
-        errors.endDate = "End date must be after start date";
-      }
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!formData.title.trim()) e.title = "Project title is required";
+    else if (formData.title.trim().length > 100) e.title = "Max 100 characters";
+    if (!formData.description.trim()) e.description = "Description is required";
+    else if (formData.description.trim().length > 1000)
+      e.description = "Max 1000 characters";
+    if (!formData.startDate) e.startDate = "Start date is required";
+    if (!formData.endDate) e.endDate = "End date is required";
+    if (
+      formData.startDate &&
+      formData.endDate &&
+      new Date(formData.startDate) >= new Date(formData.endDate)
+    )
+      e.endDate = "End date must be after start date";
+    setFormErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm() || !id) {
-      return;
-    }
-
+    if (!validate() || !id) return;
     setIsSubmitting(true);
     try {
       await dispatch(
@@ -150,7 +121,7 @@ const EditProjectPage = () => {
         );
       toast.success("Project updated successfully!");
       navigate(`/projects/${id}`);
-    } catch (_error) {
+    } catch {
       toast.error("Failed to update project");
     } finally {
       setIsSubmitting(false);
@@ -158,119 +129,69 @@ const EditProjectPage = () => {
   };
 
   const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Clear error when user starts typing
-    if (formErrors[field]) {
-      setFormErrors((prev) => ({
-        ...prev,
-        [field]: "",
-      }));
-    }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (formErrors[field]) setFormErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  if (status === RequestStatus.LOADING) {
-    return <LoaderIcon />;
-  }
+  if (status === RequestStatus.LOADING) return <LoaderIcon />;
 
-  if (error) {
+  if (error || !currentProject)
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/projects")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Projects
-          </Button>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex items-center">
-            <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
-            <span className="text-red-800">{error}</span>
-          </div>
-        </div>
+        <PageHeader
+          title="Edit Project"
+          backTo="/projects"
+          backLabel="Back to Projects"
+        />
+        <Alert variant="destructive">
+          <TriangleAlert className="h-4 w-4" />
+          <AlertDescription>{error || "Project not found."}</AlertDescription>
+        </Alert>
       </div>
     );
-  }
-
-  if (!currentProject) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/projects")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Projects
-          </Button>
-        </div>
-        <div className="text-center py-12">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Project not found
-          </h3>
-          <p className="text-gray-600">
-            The project you're looking for doesn't exist.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate(`/projects/${id}`)}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Project
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Edit Project</h1>
-          <p className="text-muted-foreground">Update project information</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Edit Project"
+        description="Update project information"
+        backTo={`/projects/${id}`}
+        backLabel="Back to Project"
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+          {/* Project Info */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
                 Project Information
               </CardTitle>
-              <CardDescription>
-                Update basic details about your project
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Project Title *</Label>
+            <Separator />
+            <CardContent className="pt-4 space-y-4">
+              <FormField
+                id="title"
+                label="Project Title"
+                required
+                error={formErrors.title}
+              >
                 <Input
                   id="title"
                   placeholder="Enter project title"
                   value={formData.title}
                   maxLength={100}
                   onChange={(e) => handleChange("title", e.target.value)}
-                  className={formErrors.title ? "border-red-500" : ""}
+                  className={`h-9 bg-background ${formErrors.title ? "border-destructive" : ""}`}
                 />
-                {formErrors.title && (
-                  <p className="text-sm text-red-600">{formErrors.title}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
+              </FormField>
+              <FormField
+                id="description"
+                label="Description"
+                required
+                error={formErrors.description}
+              >
                 <Textarea
                   id="description"
                   placeholder="Describe your project..."
@@ -278,23 +199,16 @@ const EditProjectPage = () => {
                   maxLength={1000}
                   value={formData.description}
                   onChange={(e) => handleChange("description", e.target.value)}
-                  className={formErrors.description ? "border-red-500" : ""}
+                  className={`bg-background resize-none ${formErrors.description ? "border-destructive" : ""}`}
                 />
-                {formErrors.description && (
-                  <p className="text-sm text-red-600">
-                    {formErrors.description}
-                  </p>
-                )}
-              </div>
-
+              </FormField>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
+                <FormField id="status" label="Status">
                   <Select
                     value={formData.status}
-                    onValueChange={(value) => handleChange("status", value)}
+                    onValueChange={(v) => handleChange("status", v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 bg-background">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -312,15 +226,13 @@ const EditProjectPage = () => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="priority">Priority</Label>
+                </FormField>
+                <FormField id="priority" label="Priority">
                   <Select
                     value={formData.priority}
-                    onValueChange={(value) => handleChange("priority", value)}
+                    onValueChange={(v) => handleChange("priority", v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 bg-background">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -332,108 +244,111 @@ const EditProjectPage = () => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </FormField>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+          {/* Timeline */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
                 Timeline & Management
               </CardTitle>
-              <CardDescription>
-                Update project dates and view manager information
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <Separator />
+            <CardContent className="pt-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date *</Label>
+                <FormField
+                  id="startDate"
+                  label="Start Date"
+                  required
+                  error={formErrors.startDate}
+                >
                   <Input
                     id="startDate"
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => handleChange("startDate", e.target.value)}
-                    className={formErrors.startDate ? "border-red-500" : ""}
+                    className={`h-9 bg-background ${formErrors.startDate ? "border-destructive" : ""}`}
                   />
-                  {formErrors.startDate && (
-                    <p className="text-sm text-red-600">
-                      {formErrors.startDate}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="endDate">End Date *</Label>
+                </FormField>
+                <FormField
+                  id="endDate"
+                  label="End Date"
+                  required
+                  error={formErrors.endDate}
+                >
                   <Input
                     id="endDate"
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => handleChange("endDate", e.target.value)}
-                    className={formErrors.endDate ? "border-red-500" : ""}
+                    className={`h-9 bg-background ${formErrors.endDate ? "border-destructive" : ""}`}
                   />
-                  {formErrors.endDate && (
-                    <p className="text-sm text-red-600">{formErrors.endDate}</p>
-                  )}
+                </FormField>
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+                <p className="text-xs font-medium text-foreground flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5" />
+                  Project Manager
+                </p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>
+                    <span className="font-medium text-foreground">Name: </span>
+                    {currentProject.managerName}
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">
+                      Members:{" "}
+                    </span>
+                    {currentProject.members?.length ?? 0}
+                  </p>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="p-4 bg-gray-50 dark:bg-neutral-800 rounded-lg">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Project Manager
-                  </h4>
-                  <div className="text-sm text-muted-foreground">
-                    <p>
-                      <strong>Name:</strong> {currentProject.managerName}
-                    </p>
-                    <p>
-                      <strong>ID:</strong> {currentProject.managerId}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-gray-50 dark:bg-neutral-800  rounded-lg">
-                  <h4 className="font-medium mb-2">Project Information</h4>
-                  <div className="text-sm text-muted-foreground">
-                    <p>
-                      <strong>Project ID:</strong> {currentProject.id}
-                    </p>
-                    <p>
-                      <strong>Created:</strong>{" "}
-                      {new Date(currentProject.createdAt).toLocaleDateString()}
-                    </p>
-                    <p>
-                      <strong>Members:</strong>{" "}
-                      {currentProject.members?.length || 0}
-                    </p>
-                  </div>
+              <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1">
+                <p className="text-xs font-medium text-foreground">
+                  Project Info
+                </p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>
+                    <span className="font-medium text-foreground">ID: </span>
+                    {currentProject.id}
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">
+                      Created:{" "}
+                    </span>
+                    {new Date(currentProject.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
-        <div className="flex justify-end gap-4">
+
+        <div className="flex justify-end gap-3">
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={() => navigate(`/projects/${id}`)}
             disabled={isSubmitting}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" size="sm" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                 Updating...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-4 w-4 mr-1.5" />
                 Update Project
               </>
             )}

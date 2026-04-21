@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,17 +21,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft,
-  Calendar,
   Edit,
   Users,
   Plus,
   Trash2,
-  FileText,
-  AlertCircle,
-  CheckCircle,
+  CheckCircle2,
   Shield,
   Loader2,
+  TriangleAlert,
+  ListTodo,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchProjectById, deleteProject } from "@/features/projectSlice";
@@ -44,20 +47,21 @@ import { RequestStatus, Permissions, TaskStatus } from "@/features/types";
 import RoleIcon from "@/components/RoleIcon";
 import ProjectStatusIcon from "@/components/ProjectStatusIcon";
 import LoaderIcon from "@/components/ui/loader";
+import PageHeader from "@/components/PageHeader";
+import StatCard from "@/components/StatCard";
+import EmptyState from "@/components/EmptyState";
 
 const ProjectDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-
   const {
     currentProject,
     status: projectStatus,
     error,
-  } = useAppSelector((state) => state.projects);
-  const { tasks, status: taskStatus } = useAppSelector((state) => state.tasks);
-  const { user } = useAppSelector((state) => state.auth);
-
+  } = useAppSelector((s) => s.projects);
+  const { tasks, status: taskStatus } = useAppSelector((s) => s.tasks);
+  const { user } = useAppSelector((s) => s.auth);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -67,7 +71,7 @@ const ProjectDetailsPage = () => {
     }
   }, [dispatch, id]);
 
-  const handleDeleteProject = async () => {
+  const handleDelete = async () => {
     if (!currentProject) return;
     setIsDeleting(true);
     try {
@@ -83,316 +87,338 @@ const ProjectDetailsPage = () => {
         );
       toast.success("Project deleted successfully");
       navigate("/projects");
-    } catch (_error) {
+    } catch {
       toast.error("Failed to delete project");
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const calculateProjectProgress = () => {
-    if (!tasks.length) return 0;
-    const completedTasks = tasks.filter(
-      (task) => task.status === TaskStatus.DONE
-    ).length;
-    return Math.round((completedTasks / tasks.length) * 100);
+  const progress =
+    tasks.length > 0
+      ? Math.round(
+          (tasks.filter((t) => t.status === TaskStatus.DONE).length /
+            tasks.length) *
+            100
+        )
+      : 0;
+
+  const canEdit = user
+    ? Permissions.canEditProject(user.role) ||
+      currentProject?.managerId === user?.id
+    : false;
+  const canDeleteProject = user
+    ? Permissions.canDeleteProjects(user.role)
+    : false;
+  const canCreateTask = user ? Permissions.canCreateTasks(user.role) : false;
+
+  const taskStats = {
+    total: tasks.length,
+    done: tasks.filter((t) => t.status === TaskStatus.DONE).length,
+    inProgress: tasks.filter((t) => t.status === TaskStatus.IN_PROGRESS).length,
+    blocked: tasks.filter((t) => t.status === TaskStatus.BLOCKED).length,
+    todo: tasks.filter((t) => t.status === TaskStatus.TO_DO).length,
   };
 
-  const canEditProject = () => {
-    return user
-      ? Permissions.canEditProject(user.role) ||
-          currentProject?.managerId === user?.id
-      : false;
-  };
-
-  const canDeleteProject = () => {
-    return user ? Permissions.canDeleteProjects(user.role) : false;
-  };
-
-  const canCreateTask = () => {
-    return user ? Permissions.canCreateTasks(user.role) : false;
-  };
-
-  if (projectStatus === RequestStatus.LOADING) {
-    return <LoaderIcon />;
-  }
+  if (projectStatus === RequestStatus.LOADING) return <LoaderIcon />;
 
   if (error || !currentProject) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/projects")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Projects
-          </Button>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex items-center">
-            <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
-            <span className="text-red-800">{error || "Project not found"}</span>
-          </div>
-        </div>
+        <PageHeader
+          title="Project Details"
+          backTo="/projects"
+          backLabel="Back to Projects"
+        />
+        <Alert variant="destructive">
+          <TriangleAlert className="h-4 w-4" />
+          <AlertDescription>{error || "Project not found."}</AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/projects")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Projects
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{currentProject.title}</h1>
-            <p className="text-muted-foreground">Project Details</p>
-          </div>
-        </div>
+      <PageHeader
+        title={currentProject.title}
+        description="Project Details"
+        backTo="/projects"
+        backLabel="Back to Projects"
+        actions={
+          <>
+            {canCreateTask && (
+              <Button size="sm" asChild>
+                <Link to={`/tasks/create?projectId=${currentProject.id}`}>
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Add Task
+                </Link>
+              </Button>
+            )}
+            {canEdit && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/projects/${currentProject.id}/edit`}>
+                  <Edit className="h-4 w-4 mr-1.5" />
+                  Edit
+                </Link>
+              </Button>
+            )}
+            {canDeleteProject && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" disabled={isDeleting}>
+                    {isDeleting ? (
+                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-1.5" />
+                    )}
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{currentProject.title}"?
+                      This will permanently delete the project and all
+                      associated tasks.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete Project
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2">
-          {canCreateTask() && (
-            <Button asChild>
-              <Link to={`/tasks/create?projectId=${currentProject.id}`}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Task
-              </Link>
-            </Button>
-          )}
-          {canEditProject() && (
-            <Button variant="outline" asChild>
-              <Link to={`/projects/${currentProject.id}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
-          )}
-          {canDeleteProject() && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" disabled={isDeleting}>
-                  {isDeleting ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4 mr-2" />
-                  )}
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Project</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete "{currentProject.title}"?
-                    This will permanently delete the project and all associated
-                    tasks.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteProject}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Delete Project
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
+      {/* Task Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          label="Total Tasks"
+          value={taskStats.total}
+          icon={ListTodo}
+          iconClass="text-muted-foreground"
+          valueClass="text-foreground"
+        />
+        <StatCard
+          label="Done"
+          value={taskStats.done}
+          icon={CheckCircle2}
+          iconClass="text-emerald-500"
+          valueClass="text-emerald-600"
+        />
+        <StatCard
+          label="In Progress"
+          value={taskStats.inProgress}
+          icon={Clock}
+          iconClass="text-blue-500"
+          valueClass="text-blue-600"
+        />
+        <StatCard
+          label="Blocked"
+          value={taskStats.blocked}
+          icon={XCircle}
+          iconClass="text-destructive"
+          valueClass="text-destructive"
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Project Overview
-              </CardTitle>
+        {/* Main */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Overview */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Project Overview</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Description</h4>
-                <p className="text-muted-foreground">
-                  {currentProject.description}
-                </p>
-              </div>
-
+            <Separator />
+            <CardContent className="pt-4 space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {currentProject.description}
+              </p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-medium mb-2">Status</h4>
+                  <p className="text-xs text-muted-foreground mb-1.5">Status</p>
                   <Badge
                     variant="outline"
-                    className={getProjectStatusColor(currentProject.status)}
+                    className={`${getProjectStatusColor(currentProject.status)} flex items-center gap-1 w-fit text-xs`}
                   >
                     <ProjectStatusIcon projectStatus={currentProject.status} />
-                    <span className="ml-1">{currentProject.status}</span>
+                    {currentProject.status}
                   </Badge>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-2">Priority</h4>
+                  <p className="text-xs text-muted-foreground mb-1.5">
+                    Priority
+                  </p>
                   <Badge
                     variant="outline"
-                    className={getPriorityColor(currentProject.priority)}
+                    className={`${getPriorityColor(currentProject.priority)} text-xs`}
                   >
                     {currentProject.priority}
                   </Badge>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-medium mb-2">Start Date</h4>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Start Date
+                  </p>
+                  <p className="text-sm text-foreground">
                     {formatDate(currentProject.startDate)}
-                  </div>
+                  </p>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-2">End Date</h4>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
+                  <p className="text-xs text-muted-foreground mb-1">End Date</p>
+                  <p className="text-sm text-foreground">
                     {currentProject.endDate
                       ? formatDate(currentProject.endDate)
                       : "Not set"}
-                  </div>
+                  </p>
                 </div>
               </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Progress</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Completed Tasks</span>
-                    <span>{calculateProjectProgress()}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${calculateProjectProgress()}%` }}
-                    />
-                  </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Task Completion</span>
+                  <span className="tabular-nums font-medium text-foreground">
+                    {progress}%
+                  </span>
                 </div>
+                <Progress value={progress} className="h-2" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5" />
+          {/* Tasks */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                   Tasks (
                   {
-                    tasks.filter((task) => task.projectId === currentProject.id)
+                    tasks.filter((t) => t.projectId === currentProject.id)
                       .length
                   }
                   )
-                </div>
-                {canCreateTask() && (
-                  <Button size="sm" asChild>
+                </CardTitle>
+                {canCreateTask && (
+                  <Button size="sm" variant="outline" asChild>
                     <Link to={`/tasks/create?projectId=${currentProject.id}`}>
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus className="h-4 w-4 mr-1.5" />
                       Add Task
                     </Link>
                   </Button>
                 )}
-              </CardTitle>
+              </div>
             </CardHeader>
-            <CardContent>
+            <Separator />
+            <CardContent className="p-0">
               {taskStatus === RequestStatus.LOADING ? (
                 <div className="flex items-center justify-center h-32">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : tasks.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No tasks created yet</p>
-                  {canCreateTask() && (
-                    <Button className="mt-4" size="sm" asChild>
-                      <Link to={`/tasks/create?projectId=${currentProject.id}`}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create First Task
-                      </Link>
-                    </Button>
-                  )}
-                </div>
+                <EmptyState
+                  icon={CheckCircle2}
+                  title="No tasks yet"
+                  description="Create the first task for this project."
+                  action={
+                    canCreateTask ? (
+                      <Button size="sm" asChild>
+                        <Link
+                          to={`/tasks/create?projectId=${currentProject.id}`}
+                        >
+                          <Plus className="h-4 w-4 mr-1.5" />
+                          Create Task
+                        </Link>
+                      </Button>
+                    ) : undefined
+                  }
+                />
               ) : (
-                <div className="space-y-3">
-                  {tasks
-                    .filter((task) => task.projectId === currentProject.id)
-                    .map((task) => (
-                      <div
-                        key={task.id}
-                        className="p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-medium">{task.title}</h4>
+                <ScrollArea className="h-[360px]">
+                  <div className="p-4 space-y-2">
+                    {tasks
+                      .filter((t) => t.projectId === currentProject.id)
+                      .map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-start justify-between p-3 rounded-lg border border-border bg-background hover:bg-accent/40 transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <p className="font-medium text-sm text-foreground">
+                                {task.title}
+                              </p>
                               <Badge
                                 variant="outline"
-                                className={getTaskStatusColor(task.status)}
+                                className={`${getTaskStatusColor(task.status)} text-xs`}
                               >
                                 {task.status}
                               </Badge>
                               <Badge
                                 variant="outline"
-                                className={getPriorityColor(task.priority)}
+                                className={`${getPriorityColor(task.priority)} text-xs`}
                               >
                                 {task.priority}
                               </Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground mb-2">
+                            <p className="text-xs text-muted-foreground line-clamp-1">
                               {task.description}
                             </p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Assigned to: {task.assignedToName}</span>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                              <span>{task.assignedToName}</span>
                               <span>Due: {formatDate(task.dueDate)}</span>
                             </div>
                           </div>
-                          <Button variant="ghost" size="sm" asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs ml-2 shrink-0"
+                            asChild
+                          >
                             <Link to={`/tasks/${task.id}`}>View</Link>
                           </Button>
                         </div>
-                      </div>
-                    ))}
-                </div>
+                      ))}
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
+        {/* Sidebar */}
+        <div className="space-y-4">
+          {/* Manager */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Shield className="h-4 w-4 text-muted-foreground" />
                 Project Manager
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <Separator />
+            <CardContent className="pt-4">
               <div className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarFallback>
-                    {currentProject.managerName.charAt(0).toUpperCase()}
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    {currentProject.managerName?.charAt(0).toUpperCase() ?? "?"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">
+                  <p className="font-medium text-sm text-foreground">
                     {currentProject.managerName || "Unassigned"}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Project Manager
                   </p>
                 </div>
@@ -400,89 +426,111 @@ const ProjectDetailsPage = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Team Members ({currentProject.members?.length || 0})
+          {/* Members */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                Team Members ({currentProject.members?.length ?? 0})
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {currentProject.members && currentProject.members.length > 0 ? (
-                <div className="space-y-3">
-                  {currentProject.members.map((member) => {
-                    return (
+            <Separator />
+            <CardContent className="pt-4">
+              {!currentProject.members?.length ? (
+                <div className="text-center py-4">
+                  <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+                  <p className="text-xs text-muted-foreground">
+                    No team members assigned
+                  </p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[200px]">
+                  <div className="space-y-3 pr-2">
+                    {currentProject.members.map((member) => (
                       <div
                         key={member.userId}
                         className="flex items-center gap-3"
                       >
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        <Avatar className="h-7 w-7">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                             {member.name.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm">{member.name}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {member.name}
+                            </p>
                             <RoleIcon role={member.role} />
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground truncate">
                             {member.email}
                           </p>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-4 text-muted-foreground">
-                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No team members assigned</p>
-                </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Stats</CardTitle>
+          {/* Stats */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Project Stats</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm">Total Tasks</span>
-                <span className="font-medium">{tasks.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Completed</span>
-                <span className="font-medium text-green-600">
-                  {tasks.filter((t) => t.status === TaskStatus.DONE).length}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">In Progress</span>
-                <span className="font-medium text-blue-600">
-                  {
-                    tasks.filter((t) => t.status === TaskStatus.IN_PROGRESS)
-                      .length
-                  }
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Blocked</span>
-                <span className="font-medium text-red-600">
-                  {tasks.filter((t) => t.status === TaskStatus.BLOCKED).length}
-                </span>
-              </div>
+            <Separator />
+            <CardContent className="pt-4 space-y-0">
+              {[
+                {
+                  label: "Total Tasks",
+                  value: taskStats.total,
+                  cls: "text-foreground",
+                },
+                {
+                  label: "Completed",
+                  value: taskStats.done,
+                  cls: "text-emerald-600",
+                },
+                {
+                  label: "In Progress",
+                  value: taskStats.inProgress,
+                  cls: "text-blue-600",
+                },
+                {
+                  label: "Blocked",
+                  value: taskStats.blocked,
+                  cls: "text-destructive",
+                },
+              ].map(({ label, value, cls }, i, arr) => (
+                <div key={label}>
+                  <div className="flex justify-between items-center py-2.5">
+                    <span className="text-xs text-muted-foreground">
+                      {label}
+                    </span>
+                    <span
+                      className={`text-sm font-semibold tabular-nums ${cls}`}
+                    >
+                      {value}
+                    </span>
+                  </div>
+                  {i < arr.length - 1 && <Separator />}
+                </div>
+              ))}
               <Separator />
-              <div className="flex justify-between">
-                <span className="text-sm">Created</span>
-                <span className="font-medium text-xs">
+              <div className="flex justify-between items-center py-2.5">
+                <span className="text-xs text-muted-foreground">Created</span>
+                <span className="text-xs text-foreground">
                   {formatDate(currentProject.createdAt)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Last Updated</span>
-                <span className="font-medium text-xs">
+              <Separator />
+              <div className="flex justify-between items-center py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  Last Updated
+                </span>
+                <span className="text-xs text-foreground">
                   {formatDate(currentProject.updatedAt)}
                 </span>
               </div>

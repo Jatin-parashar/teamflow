@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -30,15 +32,24 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
   Edit,
   Trash2,
   Calendar,
   User,
   Building,
   Flag,
-  MessageSquare,
   Activity,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  XCircle,
+  TriangleAlert,
+  Loader2,
 } from "lucide-react";
 import {
   RequestStatus,
@@ -52,14 +63,15 @@ import LoaderIcon from "@/components/ui/loader";
 import TaskStatusIcon from "@/components/TaskStatusIcon";
 import { getPriorityColor, getTaskStatusColor } from "@/utils/roleUtilities";
 import { logActivity } from "@/firebase/activityLog";
+import PageHeader from "@/components/PageHeader";
 
 const TaskDetailsPage = () => {
   const { id } = useParams();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { currentTask, status, error } = useAppSelector((state) => state.tasks);
-  const { projects } = useAppSelector((state) => state.projects);
-  const { user } = useAppSelector((state) => state.auth);
+  const { currentTask, status, error } = useAppSelector((s) => s.tasks);
+  const { projects } = useAppSelector((s) => s.projects);
+  const { user } = useAppSelector((s) => s.auth);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
@@ -69,9 +81,8 @@ const TaskDetailsPage = () => {
     }
   }, [dispatch, id]);
 
-  const handleDeleteTask = async () => {
+  const handleDelete = async () => {
     if (!currentTask) return;
-
     try {
       await dispatch(deleteTask(currentTask.id)).unwrap();
       if (user)
@@ -85,55 +96,49 @@ const TaskDetailsPage = () => {
         );
       toast.success("Task deleted successfully");
       navigate("/tasks");
-    } catch (_error) {
+    } catch {
       toast.error("Failed to delete task");
     }
   };
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
     if (!currentTask) return;
-
     setIsUpdatingStatus(true);
     try {
       await dispatch(
-        updateTaskStatus({
-          taskId: currentTask.id,
-          status: newStatus,
-        })
+        updateTaskStatus({ taskId: currentTask.id, status: newStatus })
       ).unwrap();
-      toast.success("Task status updated successfully");
-    } catch (_error) {
-      toast.error("Failed to update task status");
+      toast.success("Status updated");
+    } catch {
+      toast.error("Failed to update status");
     } finally {
       setIsUpdatingStatus(false);
     }
   };
 
-  const canEditTask = user ? Permissions.canEditTasks(user.role) : false;
-  const canDeleteTask = user ? Permissions.canDeleteTasks(user.role) : false;
+  const canEdit = user ? Permissions.canEditTasks(user.role) : false;
+  const canDelete = user ? Permissions.canDeleteTasks(user.role) : false;
   const canUpdateStatus = user
     ? Permissions.canUpdateTaskStatus(user.role) ||
       currentTask?.assignedTo === user?.id
     : false;
 
-  if (status === RequestStatus.LOADING) {
-    return <LoaderIcon />;
-  }
+  if (status === RequestStatus.LOADING) return <LoaderIcon />;
 
   if (status === RequestStatus.FAILED || !currentTask) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold text-foreground">
-            {error || "Task not found"}
-          </h2>
-          <p className="text-gray-500 dark:text-neutral-300 mt-2">
-            The task you're looking for doesn't exist or has been deleted.
-          </p>
-          <Button className="mt-4" onClick={() => navigate("/tasks")}>
-            Back to Tasks
-          </Button>
-        </div>
+      <div className="space-y-6">
+        <PageHeader
+          title="Task Details"
+          backTo="/tasks"
+          backLabel="Back to Tasks"
+        />
+        <Alert variant="destructive">
+          <TriangleAlert className="h-4 w-4" />
+          <AlertDescription>
+            {error || "Task not found or has been deleted."}
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -144,119 +149,126 @@ const TaskDetailsPage = () => {
   const isOverdue = dueDate ? daysUntilDue < 0 : false;
   const isDueSoon = dueDate ? daysUntilDue <= 3 && daysUntilDue >= 0 : false;
 
+  const statusConfig = {
+    [TS.TO_DO]: { icon: <Clock className="h-3.5 w-3.5" />, label: "To Do" },
+    [TS.IN_PROGRESS]: {
+      icon: <AlertCircle className="h-3.5 w-3.5" />,
+      label: "In Progress",
+    },
+    [TS.DONE]: {
+      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+      label: "Done",
+    },
+    [TS.BLOCKED]: {
+      icon: <XCircle className="h-3.5 w-3.5" />,
+      label: "Blocked",
+    },
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/tasks")}
-            className="bg-neutral-100 text-black hover:bg-neutral-200 cursor-pointer hover:text-neutral-900"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Tasks
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-200">
-              {currentTask.title}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-neutral-200">
-              Task ID: {currentTask.id}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          {canEditTask && (
-            <Button asChild variant="outline">
-              <Link to={`/tasks/${currentTask.id}/edit`}>
-                <Edit className="w-4 h-4 mr-2" />
-                Edit Task
-              </Link>
-            </Button>
-          )}
-          {canDeleteTask && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Task
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Task</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete "{currentTask.title}"? This
-                    action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteTask}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
+      <PageHeader
+        title={currentTask.title}
+        description={`Task ID: ${currentTask.id}`}
+        backTo="/tasks"
+        backLabel="Back to Tasks"
+        actions={
+          <>
+            {canEdit && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/tasks/${currentTask.id}/edit`}>
+                  <Edit className="h-4 w-4 mr-1.5" />
+                  Edit
+                </Link>
+              </Button>
+            )}
+            {canDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 mr-1.5" />
                     Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
-      </div>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Task</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{currentTask.title}"?
+                      This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Description
-              </CardTitle>
+        {/* Main */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Description */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Description</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none">
-                <p className="text-gray-700 dark:text-neutral-200">
-                  {currentTask.description || "No description provided."}
-                </p>
-              </div>
+            <Separator />
+            <CardContent className="pt-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {currentTask.description || "No description provided."}
+              </p>
             </CardContent>
           </Card>
 
+          {/* Status Update */}
           {canUpdateStatus && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
+            <Card className="border border-border bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
                   Update Status
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <Select
-                      value={currentTask.status}
-                      onValueChange={handleStatusChange}
-                      disabled={isUpdatingStatus}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={TS.TO_DO}>To Do</SelectItem>
-                        <SelectItem value={TS.IN_PROGRESS}>
-                          In Progress
-                        </SelectItem>
-                        <SelectItem value={TS.DONE}>Done</SelectItem>
-                        <SelectItem value={TS.BLOCKED}>Blocked</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <Separator />
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-3">
+                  <Select
+                    value={currentTask.status}
+                    onValueChange={handleStatusChange}
+                    disabled={isUpdatingStatus}
+                  >
+                    <SelectTrigger className="flex-1 h-9 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(statusConfig).map(
+                        ([val, { icon, label }]) => (
+                          <SelectItem key={val} value={val}>
+                            <div className="flex items-center gap-2">
+                              {icon}
+                              {label}
+                            </div>
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {isUpdatingStatus && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
                   <Badge
-                    className={`${getTaskStatusColor(
-                      currentTask.status
-                    )} flex items-center gap-1`}
+                    variant="outline"
+                    className={`${getTaskStatusColor(currentTask.status)} flex items-center gap-1 shrink-0`}
                   >
                     <TaskStatusIcon taskStatus={currentTask.status} />
                     {currentTask.status}
@@ -266,164 +278,201 @@ const TaskDetailsPage = () => {
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Timeline</CardTitle>
+          {/* Timeline */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Timeline</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-500">Created</span>
-                <span className="text-sm font-medium">
-                  {format(
+            <Separator />
+            <CardContent className="pt-4 space-y-0">
+              {[
+                {
+                  label: "Created",
+                  value: format(
                     new Date(currentTask.createdAt),
                     "MMM dd, yyyy 'at' h:mm a"
-                  )}
-                </span>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-500">Last Updated</span>
-                <span className="text-sm font-medium">
-                  {format(
+                  ),
+                  cls: "",
+                },
+                {
+                  label: "Last Updated",
+                  value: format(
                     new Date(currentTask.updatedAt),
                     "MMM dd, yyyy 'at' h:mm a"
-                  )}
-                </span>
-              </div>
-              {currentTask.completedAt && (
-                <>
-                  <Separator />
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-sm text-gray-500">Completed</span>
-                    <span className="text-sm font-medium text-green-600">
-                      {format(
-                        new Date(currentTask.completedAt),
-                        "MMM dd, yyyy 'at' h:mm a"
-                      )}
+                  ),
+                  cls: "",
+                },
+                ...(currentTask.completedAt
+                  ? [
+                      {
+                        label: "Completed",
+                        value: format(
+                          new Date(currentTask.completedAt),
+                          "MMM dd, yyyy 'at' h:mm a"
+                        ),
+                        cls: "text-emerald-600",
+                      },
+                    ]
+                  : []),
+              ].map(({ label, value, cls }, i, arr) => (
+                <div key={label}>
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-sm text-muted-foreground">
+                      {label}
+                    </span>
+                    <span
+                      className={`text-sm font-medium ${cls || "text-foreground"}`}
+                    >
+                      {value}
                     </span>
                   </div>
-                </>
-              )}
+                  {i < arr.length - 1 && <Separator />}
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Task Details</CardTitle>
+        {/* Sidebar */}
+        <div className="space-y-4">
+          {/* Task Details */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Task Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <Separator />
+            <CardContent className="pt-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-500">
-                  Status
-                </span>
+                <span className="text-xs text-muted-foreground">Status</span>
                 <Badge
-                  className={`${getTaskStatusColor(
-                    currentTask.status
-                  )} flex items-center gap-1`}
+                  variant="outline"
+                  className={`${getTaskStatusColor(currentTask.status)} flex items-center gap-1 text-xs`}
                 >
                   <TaskStatusIcon taskStatus={currentTask.status} />
                   {currentTask.status}
                 </Badge>
               </div>
-
+              <Separator />
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-500">
-                  Priority
-                </span>
+                <span className="text-xs text-muted-foreground">Priority</span>
                 <Badge
-                  className={`${getPriorityColor(
-                    currentTask.priority
-                  )} flex items-center gap-1`}
+                  variant="outline"
+                  className={`${getPriorityColor(currentTask.priority)} flex items-center gap-1 text-xs`}
                 >
-                  <Flag className="w-3 h-3" />
+                  <Flag className="h-3 w-3" />
                   {currentTask.priority}
                 </Badge>
               </div>
-
+              <Separator />
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-500">
-                  Due Date
-                </span>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-gray-400" />
+                <span className="text-xs text-muted-foreground">Due Date</span>
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                   <span
-                    className={`text-sm font-medium ${
-                      isOverdue
-                        ? "text-red-600"
-                        : isDueSoon
-                          ? "text-orange-600"
-                          : "text-gray-900"
-                    }`}
+                    className={`text-xs font-medium ${isOverdue ? "text-destructive" : isDueSoon ? "text-orange-500" : "text-foreground"}`}
                   >
                     {dueDate ? format(dueDate, "MMM dd, yyyy") : "Not set"}
                   </span>
                 </div>
               </div>
-
               {(isOverdue || isDueSoon) && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-500">
-                    Status
-                  </span>
-                  <Badge variant={isOverdue ? "destructive" : "secondary"}>
-                    {isOverdue
-                      ? `${Math.abs(daysUntilDue)} days overdue`
-                      : isDueSoon
-                        ? `Due in ${daysUntilDue} days`
-                        : ""}
-                  </Badge>
-                </div>
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Urgency
+                    </span>
+                    <Badge
+                      variant={isOverdue ? "destructive" : "secondary"}
+                      className="text-xs"
+                    >
+                      {isOverdue
+                        ? `${Math.abs(daysUntilDue)}d overdue`
+                        : `Due in ${daysUntilDue}d`}
+                    </Badge>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="w-5 h-5" />
+          {/* Project */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building className="h-4 w-4 text-muted-foreground" />
                 Project
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Link
-                  to={`/projects/${currentTask.projectId}`}
-                  className="text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  {currentTask.projectName}
-                </Link>
-                <p className="text-sm text-gray-500">
-                  {project?.description || "No project description available."}
-                </p>
-              </div>
+            <Separator />
+            <CardContent className="pt-4">
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Link
+                    to={`/projects/${currentTask.projectId}`}
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    {currentTask.projectName}
+                  </Link>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-64" side="left">
+                  <p className="text-xs text-muted-foreground">
+                    {project?.description || "No description available."}
+                  </p>
+                </HoverCardContent>
+              </HoverCard>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
+          {/* Assignment */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
                 Assignment
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Assigned to</p>
-                <p className="text-sm font-medium">
-                  {currentTask.assignedToName}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {currentTask.assignedToEmail}
-                </p>
+            <Separator />
+            <CardContent className="pt-4 space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                    {currentTask.assignedToName
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2) ?? "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-xs text-muted-foreground">Assigned to</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {currentTask.assignedToName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {currentTask.assignedToEmail}
+                  </p>
+                </div>
               </div>
               <Separator />
-              <div>
-                <p className="text-sm font-medium text-gray-500">Created by</p>
-                <p className="text-sm font-medium">
-                  {currentTask.createdByName}
-                </p>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-muted text-muted-foreground text-xs font-semibold">
+                    {currentTask.createdByName
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2) ?? "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-xs text-muted-foreground">Created by</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {currentTask.createdByName}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
