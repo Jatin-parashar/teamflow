@@ -36,8 +36,8 @@ export function listenForValueEvents<T = any>(
     (snapshot: DataSnapshot) => {
       callback(snapshot.exists() ? (snapshot.val() as T) : null);
     },
-    (error) => {
-      console.error("Error listening for value events:", error);
+    (_error) => {
+      // Error handled silently in production
     }
   );
 

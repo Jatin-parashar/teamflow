@@ -32,6 +32,7 @@ import {
 import LoaderIcon from "@/components/ui/loader";
 import PageHeader from "@/components/PageHeader";
 import FormField from "@/components/FormField";
+import { sanitize } from "@/utils/sanitize";
 import {
   FileText,
   Calendar,
@@ -124,8 +125,8 @@ const CreateProjectPage = () => {
       await dispatch(
         createProject({
           ...formData,
-          title: formData.title.trim(),
-          description: formData.description.trim(),
+          title: sanitize(formData.title.trim()),
+          description: sanitize(formData.description.trim()),
           managerName: selectedManager?.name || "",
           members: projectMembers,
           endDate: "",

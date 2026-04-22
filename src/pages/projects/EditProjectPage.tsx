@@ -26,6 +26,7 @@ import {
 import LoaderIcon from "@/components/ui/loader";
 import PageHeader from "@/components/PageHeader";
 import FormField from "@/components/FormField";
+import { sanitize } from "@/utils/sanitize";
 import {
   FileText,
   Calendar,
@@ -103,8 +104,8 @@ const EditProjectPage = () => {
           id,
           updates: {
             ...formData,
-            title: formData.title.trim(),
-            description: formData.description.trim(),
+            title: sanitize(formData.title.trim()),
+            description: sanitize(formData.description.trim()),
             startDate: new Date(formData.startDate).toISOString(),
             endDate: new Date(formData.endDate).toISOString(),
           },

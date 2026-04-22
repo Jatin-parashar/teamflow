@@ -49,8 +49,10 @@ export const initializeAuth = createAsyncThunk<
     } else {
       return null;
     }
-  } catch (error: any) {
-    return rejectWithValue(error.message || "Failed to initialize auth");
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to initialize auth"
+    );
   }
 });
 
@@ -72,8 +74,10 @@ export const login = createAsyncThunk<
     }
 
     return { id: uid, ...userData };
-  } catch (error: any) {
-    return rejectWithValue(error.message || "Login failed");
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Login failed"
+    );
   }
 });
 
@@ -98,8 +102,10 @@ export const register = createAsyncThunk<
     });
 
     return { id: user.uid, ...userData };
-  } catch (error: any) {
-    return rejectWithValue(error.message || "Registration failed");
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Registration failed"
+    );
   }
 });
 
@@ -108,8 +114,10 @@ export const logoutUser = createAsyncThunk<void, void, { rejectValue: string }>(
   async (_, { rejectWithValue }) => {
     try {
       await logOut();
-    } catch (error: any) {
-      return rejectWithValue(error.message || "Logout failed");
+    } catch (error: unknown) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Logout failed"
+      );
     }
   }
 );
@@ -186,6 +194,10 @@ const authSlice = createSlice({
         state.initialized = false;
       })
       .addCase(logoutUser.rejected, (state, action) => {
+        state.isAuthenticated = false;
+        state.user = null;
+        state.status = RequestStatus.IDLE;
+        state.initialized = false;
         state.error = action.payload || "Logout failed";
       });
   },

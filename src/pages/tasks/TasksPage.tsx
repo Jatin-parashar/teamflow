@@ -650,45 +650,55 @@ const TasksPage = () => {
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-                                  Change Status
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleStatusChange(task.id, TS.TO_DO)
-                                  }
-                                  disabled={task.status === TS.TO_DO}
-                                >
-                                  <Clock className="w-4 h-4 mr-2" />
-                                  To Do
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleStatusChange(task.id, TS.IN_PROGRESS)
-                                  }
-                                  disabled={task.status === TS.IN_PROGRESS}
-                                >
-                                  <AlertCircle className="w-4 h-4 mr-2" />
-                                  In Progress
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleStatusChange(task.id, TS.DONE)
-                                  }
-                                  disabled={task.status === TS.DONE}
-                                >
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Done
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleStatusChange(task.id, TS.BLOCKED)
-                                  }
-                                  disabled={task.status === TS.BLOCKED}
-                                >
-                                  <XCircle className="w-4 h-4 mr-2" />
-                                  Blocked
-                                </DropdownMenuItem>
+                                {(Permissions.canUpdateTaskStatus(
+                                  user?.role ?? Role.GUEST
+                                ) ||
+                                  task.assignedTo === user?.id) && (
+                                  <>
+                                    <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                                      Change Status
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleStatusChange(task.id, TS.TO_DO)
+                                      }
+                                      disabled={task.status === TS.TO_DO}
+                                    >
+                                      <Clock className="w-4 h-4 mr-2" />
+                                      To Do
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleStatusChange(
+                                          task.id,
+                                          TS.IN_PROGRESS
+                                        )
+                                      }
+                                      disabled={task.status === TS.IN_PROGRESS}
+                                    >
+                                      <AlertCircle className="w-4 h-4 mr-2" />
+                                      In Progress
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleStatusChange(task.id, TS.DONE)
+                                      }
+                                      disabled={task.status === TS.DONE}
+                                    >
+                                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                                      Done
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleStatusChange(task.id, TS.BLOCKED)
+                                      }
+                                      disabled={task.status === TS.BLOCKED}
+                                    >
+                                      <XCircle className="w-4 h-4 mr-2" />
+                                      Blocked
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 {canDeleteTask(task) && (
                                   <>
                                     <DropdownMenuSeparator />

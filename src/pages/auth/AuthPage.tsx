@@ -17,6 +17,8 @@ import { getFirebaseAuthErrorMessage } from "@/firebase/firebaseErrors";
 import { toast } from "sonner";
 import { RequestStatus } from "@/features/types";
 
+import type { EmblaCarouselType } from "embla-carousel";
+
 type AuthMode = "login" | "register";
 
 const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
@@ -28,7 +30,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
     email: "",
     password: "",
   });
-  const [api, setApi] = useState<any>(null);
+  const [api, setApi] = useState<EmblaCarouselType | undefined>(undefined);
 
   const status = useAppSelector((state) => state.auth.status);
   const error = useAppSelector((state) => state.auth.error);
@@ -82,6 +84,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
+    if (name !== "name" && name !== "email" && name !== "password") return;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -101,6 +104,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
             });
 
       await dispatch(action).unwrap();
+      setFormData({ name: "", email: "", password: "" });
       navigate("/dashboard");
     } catch {
       // Error is handled by the error useEffect via Redux state
@@ -220,9 +224,10 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
                     value={formData.password}
                     required
                     onChange={handleInputChange}
-                    autoComplete="off"
+                    autoComplete="new-password"
                     className="h-12 text-black bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
                     placeholder="Enter your password"
+                    minLength={6}
                   />
                 </div>
 

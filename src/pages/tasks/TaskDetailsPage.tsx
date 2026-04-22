@@ -169,7 +169,7 @@ const TaskDetailsPage = () => {
     <div className="space-y-6">
       <PageHeader
         title={currentTask.title}
-        description={`Task ID: ${currentTask.id}`}
+        description="Task Details"
         backTo="/tasks"
         backLabel="Back to Tasks"
         actions={
