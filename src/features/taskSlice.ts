@@ -70,7 +70,7 @@ export const fetchTasksByProject = createAsyncThunk<
 >("tasks/fetchTasksByProject", async (projectId, { rejectWithValue }) => {
   try {
     const data = await firebaseFetch<Record<string, Omit<Task, "id">> | null>(
-      `tasks.json?orderBy="projectId"&equalTo="${projectId}"`
+      `tasks.json?orderBy="projectId"&equalTo="${encodeURIComponent(projectId)}"`
     );
     if (!data) return [];
     return Object.keys(data).map((key) => ({ id: key, ...data[key] }));
@@ -88,7 +88,7 @@ export const fetchTasksByUser = createAsyncThunk<
 >("tasks/fetchTasksByUser", async (userId, { rejectWithValue }) => {
   try {
     const data = await firebaseFetch<Record<string, Omit<Task, "id">> | null>(
-      `tasks.json?orderBy="assignedTo"&equalTo="${userId}"`
+      `tasks.json?orderBy="assignedTo"&equalTo="${encodeURIComponent(userId)}"`
     );
     if (!data) return [];
     return Object.keys(data).map((key) => ({ id: key, ...data[key] }));

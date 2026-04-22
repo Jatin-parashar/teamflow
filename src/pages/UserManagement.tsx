@@ -62,8 +62,7 @@ const UserManagement = () => {
             }))
           );
         }
-      } catch (error) {
-        console.error("Failed to fetch users:", error);
+      } catch {
         toast.error("Failed to load users");
       } finally {
         setLoading(false);
@@ -112,7 +111,7 @@ const UserManagement = () => {
         }
       }
       toast.success(`Role updated to ${newRole}`);
-    } catch (error) {
+    } catch {
       if (prev) {
         await firebaseFetch(`users/${userId}.json`, {
           method: "PATCH",
@@ -122,7 +121,6 @@ const UserManagement = () => {
           u.map((x) => (x.id === userId ? { ...x, role: prev } : x))
         );
       }
-      console.error("Failed to update user role:", error);
       toast.error("Failed to update role. Changes reverted.");
     }
   };

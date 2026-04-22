@@ -75,6 +75,7 @@ const KanbanBoard = ({ tasks, onStatusChange }: KanbanBoardProps) => {
   const handleDrop = (e: React.DragEvent, status: TaskStatus) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("taskId");
+    if (!taskId) return;
     const task = tasks.find((t) => t.id === taskId);
     if (task && task.status !== status) onStatusChange(taskId, status);
     setDraggingId(null);

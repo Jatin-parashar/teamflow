@@ -11,6 +11,7 @@ export const store = configureStore({
     tasks: taskReducer,
     notifications: notificationReducer,
   },
+  devTools: import.meta.env.DEV,
 });
 
 export type RootState = ReturnType<typeof store.getState>;

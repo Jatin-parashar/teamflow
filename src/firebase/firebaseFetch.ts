@@ -7,10 +7,12 @@ export async function firebaseFetch<T = any>(
   options?: RequestInit
 ): Promise<T> {
   const user = auth.currentUser;
-  const token = user ? await user.getIdToken() : null;
+  if (!user) {
+    throw new Error("Authentication required");
+  }
+  const token = await user.getIdToken();
   const separator = path.includes("?") ? "&" : "?";
-  const authParam = token ? `${separator}auth=${token}` : "";
-  const url = `${BASE_URL}/${path}${authParam}`;
+  const url = `${BASE_URL}/${path}${separator}auth=${token}`;
 
   const response = await fetch(url, {
     ...options,
@@ -21,9 +23,7 @@ export async function firebaseFetch<T = any>(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Firebase request failed: ${response.status} ${response.statusText}`
-    );
+    throw new Error("Request failed. Please try again.");
   }
 
   return response.json();

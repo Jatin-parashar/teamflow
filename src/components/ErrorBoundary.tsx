@@ -21,8 +21,8 @@ class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught:", error, errorInfo);
+  componentDidCatch(_error: Error, _errorInfo: React.ErrorInfo) {
+    // Silently handled — avoid leaking error details in production
   }
 
   render() {
@@ -38,7 +38,7 @@ class ErrorBoundary extends React.Component<Props, State> {
               An unexpected error occurred. Please try refreshing the page.
             </p>
             <p className="text-xs text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded">
-              {this.state.error?.message}
+              An error occurred. Please try again.
             </p>
             <Button
               onClick={() => {

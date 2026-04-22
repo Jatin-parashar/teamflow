@@ -24,6 +24,7 @@ import { Plus, FolderOpen, Loader2 } from "lucide-react";
 import { logActivity } from "@/firebase/activityLog";
 import PageHeader from "@/components/PageHeader";
 import FormField from "@/components/FormField";
+import { sanitize } from "@/utils/sanitize";
 
 const CreateTaskPage = () => {
   const navigate = useNavigate();
@@ -95,8 +96,8 @@ const CreateTaskPage = () => {
     try {
       const result = await dispatch(
         createTask({
-          title: formData.title.trim(),
-          description: formData.description.trim(),
+          title: sanitize(formData.title.trim()),
+          description: sanitize(formData.description.trim()),
           status: formData.status,
           priority: formData.priority,
           projectId: formData.projectId,

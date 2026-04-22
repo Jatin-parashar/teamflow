@@ -1,4 +1,10 @@
-import { ref, onValue, off } from "firebase/database";
+import {
+  ref,
+  onValue,
+  query,
+  orderByChild,
+  limitToLast,
+} from "firebase/database";
 import { db } from "./firebase";
 import type { AppDispatch } from "@/app/store";
 import {
@@ -16,7 +22,11 @@ export const startNotificationListener = (
   // Clean up any existing listener first
   stopNotificationListener();
 
-  const activityRef = ref(db, "activity");
+  const activityRef = query(
+    ref(db, "activity"),
+    orderByChild("timestamp"),
+    limitToLast(50)
+  );
 
   const unsubscribe = onValue(activityRef, (snapshot) => {
     const data = snapshot.val();
@@ -43,7 +53,6 @@ export const startNotificationListener = (
 
   // Store cleanup function
   activeListener = () => {
-    off(activityRef);
     unsubscribe();
   };
 };

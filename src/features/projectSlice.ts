@@ -68,8 +68,10 @@ export const fetchProjects = createAsyncThunk<
     > | null>("projects.json");
     if (!data) return [];
     return Object.keys(data).map((key) => ({ id: key, ...data[key] }));
-  } catch (error: any) {
-    return rejectWithValue(error.message || "Failed to fetch projects");
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to fetch projects"
+    );
   }
 });
 
@@ -84,8 +86,10 @@ export const fetchProjectById = createAsyncThunk<
     );
     if (!data) return rejectWithValue("Project not found");
     return { id: projectId, ...data };
-  } catch (error: any) {
-    return rejectWithValue(error.message || "Failed to fetch project");
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to fetch project"
+    );
   }
 });
 
@@ -105,8 +109,10 @@ export const createProject = createAsyncThunk<
     });
 
     return { id: projectId, ...newProject };
-  } catch (error: any) {
-    return rejectWithValue(error.message || "Failed to create project");
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to create project"
+    );
   }
 });
 
@@ -127,8 +133,10 @@ export const updateProject = createAsyncThunk<
       `projects/${id}.json`
     );
     return { id, ...data };
-  } catch (error: any) {
-    return rejectWithValue(error.message || "Failed to update project");
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to update project"
+    );
   }
 });
 
@@ -138,9 +146,10 @@ export const deleteProject = createAsyncThunk<
   { rejectValue: string }
 >("projects/deleteProject", async (projectId, { rejectWithValue }) => {
   try {
-    const tasksData = await firebaseFetch<Record<string, any> | null>(
-      "tasks.json"
-    );
+    const tasksData = await firebaseFetch<Record<
+      string,
+      { projectId: string }
+    > | null>("tasks.json");
 
     const updates: Record<string, null> = {
       [`/projects/${projectId}`]: null,
@@ -160,8 +169,10 @@ export const deleteProject = createAsyncThunk<
     });
 
     return projectId;
-  } catch (error: any) {
-    return rejectWithValue(error.message || "Failed to delete project");
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to delete project"
+    );
   }
 });
 
@@ -193,8 +204,10 @@ export const addProjectMember = createAsyncThunk<
       });
 
       return { id: projectId, ...projectData, members: updatedMembers };
-    } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to add project member");
+    } catch (error: unknown) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Failed to add project member"
+      );
     }
   }
 );
@@ -222,9 +235,11 @@ export const removeProjectMember = createAsyncThunk<
       });
 
       return { id: projectId, ...projectData, members: updatedMembers };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.message || "Failed to remove project member"
+        error instanceof Error
+          ? error.message
+          : "Failed to remove project member"
       );
     }
   }

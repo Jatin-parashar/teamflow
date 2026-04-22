@@ -19,7 +19,10 @@ const NotFound = () => {
         <p className="text-gray-600 mb-8">
           The page you're looking for doesn't exist or has been moved.
         </p>
-        <Button onClick={() => window.history.back()} variant="secondary">
+        <Button
+          onClick={() => (window.location.href = "/")}
+          variant="secondary"
+        >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Go Back
         </Button>

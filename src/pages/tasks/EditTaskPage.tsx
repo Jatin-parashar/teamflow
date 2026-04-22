@@ -28,6 +28,7 @@ import { logActivity } from "@/firebase/activityLog";
 import LoaderIcon from "@/components/ui/loader";
 import PageHeader from "@/components/PageHeader";
 import FormField from "@/components/FormField";
+import { sanitize } from "@/utils/sanitize";
 
 const EditTaskPage = () => {
   const navigate = useNavigate();
@@ -129,8 +130,8 @@ const EditTaskPage = () => {
         updateTask({
           id,
           updates: {
-            title: formData.title.trim(),
-            description: formData.description.trim(),
+            title: sanitize(formData.title.trim()),
+            description: sanitize(formData.description.trim()),
             status: formData.status,
             priority: formData.priority,
             projectId: formData.projectId,
