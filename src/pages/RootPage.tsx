@@ -36,6 +36,10 @@ import {
   Users,
   Activity,
   Search,
+  Trash2,
+  Moon,
+  Sun,
+  LogOut,
 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router";
 import { Permissions, Role } from "@/features/types";
@@ -44,6 +48,7 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 import { useEffect, useState } from "react";
 import NotificationBell from "@/components/NotificationBell";
 import GlobalSearch from "@/components/GlobalSearch";
+import { useTheme } from "@/context/ThemeProvider";
 import {
   startNotificationListener,
   clearNotificationState,
@@ -63,7 +68,9 @@ const SidebarAutoClose = () => {
 const RootPage = () => {
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
+  const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   // Start real-time notification listener when user is logged in
   useEffect(() => {
@@ -118,6 +125,12 @@ const RootPage = () => {
       url: "/activity",
       icon: Activity,
       visible: user ? Permissions.canViewActivity(user.role) : false,
+    },
+    {
+      title: "Trash",
+      url: "/trash",
+      icon: Trash2,
+      visible: user ? Permissions.canDeleteTasks(user.role) : false,
     },
     {
       title: "Settings",
@@ -178,16 +191,22 @@ const RootPage = () => {
               <SidebarGroupLabel>Navigation</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {visibleMain.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <Link to={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {visibleMain.map((item) => {
+                    const isActive =
+                      location.pathname === item.url ||
+                      (item.url !== "/dashboard" &&
+                        location.pathname.startsWith(item.url));
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild isActive={isActive}>
+                          <Link to={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -232,10 +251,53 @@ const RootPage = () => {
               </SidebarGroup>
             )}
           </SidebarContent>
+
+          {/* Sidebar Footer */}
+          <div className="border-t border-sidebar-border p-3 space-y-2">
+            <div className="flex items-center gap-2.5 px-2">
+              <Avatar className="w-7 h-7 shrink-0">
+                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-medium">
+                  {getInitials(user?.name || "")}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {user?.name}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user?.email}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 justify-start h-8 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              >
+                {theme === "dark" ? (
+                  <Sun className="h-3.5 w-3.5 mr-1.5" />
+                ) : (
+                  <Moon className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                {theme === "dark" ? "Light" : "Dark"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 justify-start h-8 text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => dispatch(logoutUser())}
+              >
+                <LogOut className="h-3.5 w-3.5 mr-1.5" />
+                Logout
+              </Button>
+            </div>
+          </div>
         </Sidebar>
 
         <SidebarInset>
-          <header className="border-b bg-background z-10">
+          <header className="sticky top-0 border-b bg-background/95 backdrop-blur-sm z-10">
             <nav className="flex justify-between items-center py-3 px-5">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="md:hidden" />

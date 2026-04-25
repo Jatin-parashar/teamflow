@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
   return (
-    <main className="min-h-screen bg-white flex items-center justify-center px-4">
+    <main className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
         <div className="mb-8">
           <img
@@ -13,18 +13,15 @@ const NotFound = () => {
             className="mx-auto h-48 w-auto object-contain"
           />
         </div>
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <h1 className="text-4xl font-bold text-foreground mb-3">
           Page Not Found
         </h1>
-        <p className="text-gray-600 mb-8">
+        <p className="text-muted-foreground mb-8">
           The page you're looking for doesn't exist or has been moved.
         </p>
-        <Button
-          onClick={() => (window.location.href = "/")}
-          variant="secondary"
-        >
+        <Button onClick={() => (window.location.href = "/")} variant="outline">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Go Back
+          Go Back Home
         </Button>
       </div>
     </main>
