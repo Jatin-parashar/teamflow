@@ -64,6 +64,9 @@ import TaskStatusIcon from "@/components/TaskStatusIcon";
 import { getPriorityColor, getTaskStatusColor } from "@/utils/roleUtilities";
 import { logActivity } from "@/firebase/activityLog";
 import PageHeader from "@/components/PageHeader";
+import TaskComments from "@/components/TaskComments";
+import TaskAttachments from "@/components/TaskAttachments";
+import TaskSubtasks from "@/components/TaskSubtasks";
 
 const TaskDetailsPage = () => {
   const { id } = useParams();
@@ -194,8 +197,8 @@ const TaskDetailsPage = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete Task</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete "{currentTask.title}"?
-                      This action cannot be undone.
+                      Are you sure you want to delete "{currentTask.title}"? It
+                      will be moved to trash and can be restored later.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -277,6 +280,15 @@ const TaskDetailsPage = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Subtasks */}
+          <TaskSubtasks task={currentTask} />
+
+          {/* Attachments */}
+          <TaskAttachments taskId={currentTask.id} />
+
+          {/* Comments */}
+          <TaskComments taskId={currentTask.id} />
 
           {/* Timeline */}
           <Card className="border border-border bg-card">
