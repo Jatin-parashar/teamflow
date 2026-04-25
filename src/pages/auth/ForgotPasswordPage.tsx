@@ -63,7 +63,7 @@ const ForgotPasswordPage: React.FC = () => {
                 <h2 className="text-3xl font-bold text-slate-700">
                   Reset Password
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-slate-500">
                   Enter your email and we'll send you a link to reset your
                   password.
                 </p>
@@ -81,7 +81,7 @@ const ForgotPasswordPage: React.FC = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoComplete="off"
-                    className="h-12 text-black bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg"
+                    className="h-12 text-slate-900 bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg"
                     placeholder="Enter your email"
                   />
                 </div>

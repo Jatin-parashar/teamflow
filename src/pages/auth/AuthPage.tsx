@@ -191,7 +191,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
                 <h2 className="text-3xl font-bold text-slate-700">
                   {mode === "login" ? "Welcome Back" : "Create Account"}
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-slate-500">
                   {mode === "login"
                     ? "Sign in to your TeamFlow account"
                     : "Join TeamFlow and start managing projects"}
@@ -215,7 +215,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
                       onChange={handleInputChange}
                       required
                       autoComplete="off"
-                      className="h-12 text-black bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
+                      className="h-12 text-slate-900 bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
                       placeholder="Enter your full name"
                     />
                   </div>
@@ -233,7 +233,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
                     onChange={handleInputChange}
                     required
                     autoComplete="off"
-                    className="h-12 text-black bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
+                    className="h-12 text-slate-900 bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -267,7 +267,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
                     required
                     onChange={handleInputChange}
                     autoComplete="new-password"
-                    className="h-12 text-black bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
+                    className="h-12 text-slate-900 bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
                     placeholder="Enter your password"
                     minLength={6}
                   />
@@ -308,7 +308,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
               </div>
 
               <div className="text-center">
-                <p className="text-gray-600">
+                <p className="text-slate-500">
                   {mode === "login"
                     ? "Don't have an account?"
                     : "Already have an account?"}
