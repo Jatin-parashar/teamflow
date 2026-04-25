@@ -32,9 +32,16 @@ import {
   ListTodo,
   Clock,
   XCircle,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { toast } from "sonner";
-import { fetchProjectById, deleteProject } from "@/features/projectSlice";
+import {
+  fetchProjectById,
+  deleteProject,
+  archiveProject,
+  unarchiveProject,
+} from "@/features/projectSlice";
 import { fetchTasksByProject } from "@/features/taskSlice";
 import { logActivity } from "@/firebase/activityLog";
 import {
@@ -63,6 +70,7 @@ const ProjectDetailsPage = () => {
   const { tasks, status: taskStatus } = useAppSelector((s) => s.tasks);
   const { user } = useAppSelector((s) => s.auth);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -85,12 +93,30 @@ const ProjectDetailsPage = () => {
           currentProject.id,
           currentProject.title
         );
-      toast.success("Project deleted successfully");
+      toast.success("Project moved to trash");
       navigate("/projects");
     } catch {
       toast.error("Failed to delete project");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleToggleArchive = async () => {
+    if (!currentProject) return;
+    setIsArchiving(true);
+    try {
+      const action = currentProject.isArchived
+        ? unarchiveProject(currentProject.id)
+        : archiveProject(currentProject.id);
+      await dispatch(action).unwrap();
+      toast.success(
+        currentProject.isArchived ? "Project unarchived" : "Project archived"
+      );
+    } catch {
+      toast.error("Failed to update archive status");
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -163,6 +189,23 @@ const ProjectDetailsPage = () => {
                 </Link>
               </Button>
             )}
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleArchive}
+                disabled={isArchiving}
+              >
+                {isArchiving ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : currentProject.isArchived ? (
+                  <ArchiveRestore className="h-4 w-4 mr-1.5" />
+                ) : (
+                  <Archive className="h-4 w-4 mr-1.5" />
+                )}
+                {currentProject.isArchived ? "Unarchive" : "Archive"}
+              </Button>
+            )}
             {canDeleteProject && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -180,8 +223,7 @@ const ProjectDetailsPage = () => {
                     <AlertDialogTitle>Delete Project</AlertDialogTitle>
                     <AlertDialogDescription>
                       Are you sure you want to delete "{currentProject.title}"?
-                      This will permanently delete the project and all
-                      associated tasks.
+                      It will be moved to trash and can be restored later.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
