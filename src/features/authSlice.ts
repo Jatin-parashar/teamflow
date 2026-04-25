@@ -3,7 +3,10 @@ import {
   logIn,
   logOut,
   signUp,
+  resetPassword as firebaseResetPassword,
+  resendVerificationEmail as firebaseResendVerification,
 } from "@/firebase/firebaseAuth";
+import { auth } from "@/firebase/firebase";
 import { firebaseFetch } from "@/firebase/firebaseFetch";
 import {
   createAsyncThunk,
@@ -65,6 +68,12 @@ export const login = createAsyncThunk<
     const user = await logIn(email, password);
     const uid = user.uid;
 
+    const firebaseUser = auth.currentUser;
+    if (firebaseUser && !firebaseUser.emailVerified) {
+      await logOut();
+      return rejectWithValue("auth/email-not-verified");
+    }
+
     const userData = await firebaseFetch<Omit<User, "id"> | null>(
       `users/${uid}.json`
     );
@@ -81,8 +90,41 @@ export const login = createAsyncThunk<
   }
 });
 
+export const resetPassword = createAsyncThunk<
+  void,
+  string,
+  { rejectValue: string }
+>("auth/resetPassword", async (email, { rejectWithValue }) => {
+  try {
+    await firebaseResetPassword(email);
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to send reset email"
+    );
+  }
+});
+
+export const resendVerification = createAsyncThunk<
+  void,
+  { email: string; password: string },
+  { rejectValue: string }
+>(
+  "auth/resendVerification",
+  async ({ email, password }, { rejectWithValue }) => {
+    try {
+      await logIn(email, password);
+      await firebaseResendVerification();
+      await logOut();
+    } catch (error: unknown) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Failed to resend verification"
+      );
+    }
+  }
+);
+
 export const register = createAsyncThunk<
-  User,
+  User | null,
   { name: string; email: string; password: string },
   { rejectValue: string }
 >("auth/register", async ({ name, email, password }, { rejectWithValue }) => {
@@ -101,7 +143,10 @@ export const register = createAsyncThunk<
       body: JSON.stringify(userData),
     });
 
-    return { id: user.uid, ...userData };
+    // Sign out immediately — user must verify email before logging in
+    await logOut();
+
+    return null;
   } catch (error: unknown) {
     return rejectWithValue(
       error instanceof Error ? error.message : "Registration failed"
@@ -177,10 +222,13 @@ const authSlice = createSlice({
         state.status = RequestStatus.LOADING;
         state.error = null;
       })
-      .addCase(register.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(register.fulfilled, (state, action) => {
         state.status = RequestStatus.SUCCEEDED;
-        state.isAuthenticated = true;
-        state.user = action.payload;
+        if (action.payload) {
+          state.isAuthenticated = true;
+          state.user = action.payload;
+        }
+        // If null, user registered but needs email verification — stay unauthenticated
       })
       .addCase(register.rejected, (state, action) => {
         state.status = RequestStatus.FAILED;
@@ -199,6 +247,27 @@ const authSlice = createSlice({
         state.status = RequestStatus.IDLE;
         state.initialized = false;
         state.error = action.payload || "Logout failed";
+      })
+      .addCase(resetPassword.pending, (state) => {
+        state.status = RequestStatus.LOADING;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state) => {
+        state.status = RequestStatus.SUCCEEDED;
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.status = RequestStatus.FAILED;
+        state.error = action.payload || "Failed to send reset email";
+      })
+      .addCase(resendVerification.pending, (state) => {
+        state.status = RequestStatus.LOADING;
+      })
+      .addCase(resendVerification.fulfilled, (state) => {
+        state.status = RequestStatus.SUCCEEDED;
+      })
+      .addCase(resendVerification.rejected, (state, action) => {
+        state.status = RequestStatus.FAILED;
+        state.error = action.payload || "Failed to resend verification";
       });
   },
 });

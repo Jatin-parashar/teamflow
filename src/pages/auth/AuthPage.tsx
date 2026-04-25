@@ -7,7 +7,12 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
-import { clearError, login, register } from "@/features/authSlice";
+import {
+  clearError,
+  login,
+  register,
+  resendVerification,
+} from "@/features/authSlice";
 import { Navigate, useNavigate } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import Img1 from "@/assets/img1.jpg";
@@ -36,6 +41,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
   const error = useAppSelector((state) => state.auth.error);
   const loading = status === RequestStatus.LOADING;
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const isEmailNotVerified = error === "auth/email-not-verified";
 
   useEffect(() => {
     if (error) {
@@ -91,21 +97,43 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
     }));
   };
 
+  const handleResendVerification = async () => {
+    try {
+      await dispatch(
+        resendVerification({
+          email: formData.email,
+          password: formData.password,
+        })
+      ).unwrap();
+      toast.success("Verification email sent! Check your inbox.");
+    } catch {
+      toast.error("Failed to resend verification email.");
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
-      const action =
-        mode === "login"
-          ? login({ email: formData.email, password: formData.password })
-          : register({
-              name: formData.name,
-              email: formData.email,
-              password: formData.password,
-            });
-
-      await dispatch(action).unwrap();
-      setFormData({ name: "", email: "", password: "" });
-      navigate("/dashboard");
+      if (mode === "login") {
+        await dispatch(
+          login({ email: formData.email, password: formData.password })
+        ).unwrap();
+        setFormData({ name: "", email: "", password: "" });
+        navigate("/dashboard");
+      } else {
+        await dispatch(
+          register({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+          })
+        ).unwrap();
+        setFormData({ name: "", email: "", password: "" });
+        toast.success(
+          "Account created! Please check your email to verify before signing in."
+        );
+        navigate("/login");
+      }
     } catch {
       // Error is handled by the error useEffect via Redux state
     }
@@ -211,12 +239,26 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="password"
-                    className="text-slate-800 font-medium"
-                  >
-                    Password
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="password"
+                      className="text-slate-800 font-medium"
+                    >
+                      Password
+                    </Label>
+                    {mode === "login" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          dispatch(clearError());
+                          navigate("/forgot-password");
+                        }}
+                        className="cursor-pointer text-sm text-slate-500 hover:text-slate-700"
+                      >
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
                   <Input
                     id="password"
                     name="password"
@@ -251,6 +293,18 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
                     "Create Account"
                   )}
                 </Button>
+
+                {isEmailNotVerified && mode === "login" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleResendVerification}
+                    disabled={loading}
+                    className="cursor-pointer w-full h-10 rounded-lg"
+                  >
+                    Resend Verification Email
+                  </Button>
+                )}
               </div>
 
               <div className="text-center">

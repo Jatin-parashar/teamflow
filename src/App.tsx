@@ -7,6 +7,7 @@ import SettingsPage from "./pages/settings/SettingsPage";
 import UnauthorizedPage from "./pages/errors/UnauthorizedPage";
 import AuthProtectedRoute from "./pages/auth/AuthProtectedRoute";
 import AuthPage from "./pages/auth/AuthPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ProjectsPage from "./pages/projects/ProjectsPage";
 import RoleProtectedRoute from "./pages/auth/RoleProtectedRoute";
 import CreateProjectPage from "./pages/projects/CreateProjectPage";
@@ -20,6 +21,7 @@ import { Permissions } from "./features/types";
 import ManageMembers from "./pages/ManageMembers";
 import UserManagement from "./pages/UserManagement";
 import ActivityPage from "./pages/ActivityPage";
+import TrashPage from "./pages/TrashPage";
 
 const router = createBrowserRouter([
   {
@@ -29,6 +31,10 @@ const router = createBrowserRouter([
   {
     path: "/register",
     element: <AuthPage mode="register" />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPasswordPage />,
   },
   {
     path: "/",
@@ -60,6 +66,14 @@ const router = createBrowserRouter([
         element: (
           <RoleProtectedRoute permission={Permissions.canViewActivity}>
             <ActivityPage />
+          </RoleProtectedRoute>
+        ),
+      },
+      {
+        path: "trash",
+        element: (
+          <RoleProtectedRoute permission={Permissions.canDeleteTasks}>
+            <TrashPage />
           </RoleProtectedRoute>
         ),
       },

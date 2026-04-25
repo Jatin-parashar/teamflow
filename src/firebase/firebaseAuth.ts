@@ -12,6 +12,8 @@ import {
   inMemoryPersistence,
   setPersistence,
   onAuthStateChanged,
+  sendPasswordResetEmail,
+  sendEmailVerification,
 } from "firebase/auth";
 
 import { auth } from "./firebase";
@@ -106,10 +108,20 @@ export async function signUp(
   const user = userCredential.user;
 
   await updateProfile(user, { displayName: name });
+  await sendEmailVerification(user);
 
   return {
     uid: user.uid,
     displayName: user.displayName,
     email: user.email,
   };
+}
+
+export async function resetPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email);
+}
+
+export async function resendVerificationEmail(): Promise<void> {
+  const user = auth.currentUser;
+  if (user) await sendEmailVerification(user);
 }
