@@ -91,7 +91,7 @@ export default function Breadcrumbs() {
 
     return (
       <Fragment key={href}>
-        <BreadcrumbItem className="text-black dark:text-white">
+        <BreadcrumbItem>
           {!isLast ? (
             <BreadcrumbLink asChild>
               <Link to={href}>{label}</Link>
@@ -100,9 +100,7 @@ export default function Breadcrumbs() {
             <BreadcrumbPage>{label}</BreadcrumbPage>
           )}
         </BreadcrumbItem>
-        {!isLast && (
-          <BreadcrumbSeparator className="text-black dark:text-white" />
-        )}
+        {!isLast && <BreadcrumbSeparator />}
       </Fragment>
     );
   });
@@ -114,14 +112,12 @@ export default function Breadcrumbs() {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        <BreadcrumbItem className="text-black dark:text-white">
+        <BreadcrumbItem>
           <BreadcrumbLink asChild>
             <Link to="/">Home</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
-        {segments.length > 0 && (
-          <BreadcrumbSeparator className="text-black dark:text-white" />
-        )}
+        {segments.length > 0 && <BreadcrumbSeparator />}
         {breadcrumbs}
       </BreadcrumbList>
     </Breadcrumb>

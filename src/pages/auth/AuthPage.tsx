@@ -2,11 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel";
+import { Separator } from "@/components/ui/separator";
 import {
   clearError,
   login,
@@ -15,14 +11,10 @@ import {
 } from "@/features/authSlice";
 import { Navigate, useNavigate } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
-import Img1 from "@/assets/img1.jpg";
-import Img2 from "@/assets/img2.jpg";
-import Img3 from "@/assets/img3.jpg";
 import { getFirebaseAuthErrorMessage } from "@/firebase/firebaseErrors";
 import { toast } from "sonner";
 import { RequestStatus } from "@/features/types";
-
-import type { EmblaCarouselType } from "embla-carousel";
+import { FolderKanban, Loader2 } from "lucide-react";
 
 type AuthMode = "login" | "register";
 
@@ -35,7 +27,6 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
     email: "",
     password: "",
   });
-  const [api, setApi] = useState<EmblaCarouselType | undefined>(undefined);
 
   const status = useAppSelector((state) => state.auth.status);
   const error = useAppSelector((state) => state.auth.error);
@@ -49,38 +40,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
     }
   }, [error]);
 
-  useEffect(() => {
-    if (!api) return;
-
-    const interval = setInterval(() => {
-      api.scrollNext();
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [api]);
-
   if (isAuthenticated) return <Navigate to="/dashboard" />;
-
-  const carouselImages = [
-    {
-      src: Img1,
-      title: "Streamline Your Workflow",
-      description:
-        "Organize tasks, track progress, and collaborate seamlessly with your team.",
-    },
-    {
-      src: Img2,
-      title: "Boost Team Productivity",
-      description:
-        "Manage projects efficiently with intuitive tools and real-time updates.",
-    },
-    {
-      src: Img3,
-      title: "Achieve Your Goals",
-      description:
-        "Turn your vision into reality with powerful project management features.",
-    },
-  ];
 
   const toggleMode = () => {
     setFormData({ name: "", email: "", password: "" });
@@ -91,10 +51,7 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
     if (name !== "name" && name !== "email" && name !== "password") return;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleResendVerification = async () => {
@@ -135,195 +92,156 @@ const AuthPage: React.FC<{ mode: AuthMode }> = ({ mode }) => {
         navigate("/login");
       }
     } catch {
-      // Error is handled by the error useEffect via Redux state
+      // Error handled via Redux → useEffect → toast
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-200 to-slate-300 flex items-center justify-center p-5">
-      <div className="w-full max-w-7xl bg-white rounded-md shadow-2xl overflow-hidden">
-        <div className="flex flex-col lg:flex-row min-h-[650px]">
-          <div className="lg:w-1/2 relative bg-gradient-to-br from-slate-300 via-slate-300 to-slate-400 p-8 flex items-center justify-center">
-            <div className="w-full max-w-lg">
-              <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold text-slate-700 mb-2">
-                  TeamFlow
-                </h1>
-                <p className="text-slate-600">Project Management Made Simple</p>
-              </div>
-              <Carousel
-                setApi={setApi}
-                className="w-full"
-                opts={{
-                  align: "start",
-                  loop: true,
-                }}
-              >
-                <CarouselContent>
-                  {carouselImages.map((image, index) => (
-                    <CarouselItem key={index}>
-                      <div className="text-center space-y-6">
-                        <div className="relative">
-                          <img
-                            src={image.src}
-                            alt={image.title}
-                            className="w-full h-80 object-cover rounded-2xl shadow-xl"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent rounded-2xl"></div>
-                        </div>
-                        <div className="text-white space-y-4">
-                          <h3 className="text-2xl font-bold">{image.title}</h3>
-                          <p className="text-slate-50 text-lg leading-relaxed">
-                            {image.description}
-                          </p>
-                        </div>
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-              </Carousel>
-            </div>
+    <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 bg-muted/40">
+      {/* Background pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,black_70%,transparent_100%)]" />
+
+      <div className="relative w-full max-w-[420px]">
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-2.5 mb-8">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-sm">
+            <FolderKanban className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <span className="text-2xl font-bold text-foreground tracking-tight">
+            TeamFlow
+          </span>
+        </div>
+
+        {/* Card */}
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6 sm:p-8">
+          <div className="space-y-1.5 mb-6">
+            <h1 className="text-xl font-semibold text-foreground">
+              {mode === "login"
+                ? "Sign in to your account"
+                : "Create your account"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {mode === "login"
+                ? "Welcome back — enter your details below"
+                : "Get started with TeamFlow for free"}
+            </p>
           </div>
 
-          <div className="lg:w-1/2 p-8 lg:p-12 flex items-center justify-center">
-            <form className="w-full max-w-md space-y-8" onSubmit={handleSubmit}>
-              <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold text-slate-700">
-                  {mode === "login" ? "Welcome Back" : "Create Account"}
-                </h2>
-                <p className="text-gray-600">
-                  {mode === "login"
-                    ? "Sign in to your TeamFlow account"
-                    : "Join TeamFlow and start managing projects"}
-                </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === "register" && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Full name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  autoComplete="name"
+                  placeholder="John Doe"
+                  className="h-10"
+                />
               </div>
+            )}
 
-              <div className="space-y-6">
-                {mode === "register" && (
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="name"
-                      className="text-slate-800 font-medium"
-                    >
-                      Full Name
-                    </Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      type="text"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
-                      autoComplete="off"
-                      className="h-12 text-black bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
-                      placeholder="Enter your full name"
-                    />
-                  </div>
-                )}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email address</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                autoComplete="email"
+                placeholder="you@company.com"
+                className="h-10"
+              />
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-slate-800 font-medium">
-                    Email Address
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    autoComplete="off"
-                    className="h-12 text-black bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
-                    placeholder="Enter your email"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label
-                      htmlFor="password"
-                      className="text-slate-800 font-medium"
-                    >
-                      Password
-                    </Label>
-                    {mode === "login" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          dispatch(clearError());
-                          navigate("/forgot-password");
-                        }}
-                        className="cursor-pointer text-sm text-slate-500 hover:text-slate-700"
-                      >
-                        Forgot password?
-                      </button>
-                    )}
-                  </div>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    required
-                    onChange={handleInputChange}
-                    autoComplete="new-password"
-                    className="h-12 text-black bg-slate-50 border-slate-200 focus:border-slate-500 focus:ring-slate-500 rounded-lg transition-all duration-200"
-                    placeholder="Enter your password"
-                    minLength={6}
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="cursor-pointer w-full h-12 bg-slate-500 hover:bg-slate-600 text-white font-semibold rounded-lg transition-all duration-200 transform disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                >
-                  {loading ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>
-                        {mode === "login"
-                          ? "Signing in..."
-                          : "Creating account..."}
-                      </span>
-                    </div>
-                  ) : mode === "login" ? (
-                    "Sign In"
-                  ) : (
-                    "Create Account"
-                  )}
-                </Button>
-
-                {isEmailNotVerified && mode === "login" && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleResendVerification}
-                    disabled={loading}
-                    className="cursor-pointer w-full h-10 rounded-lg"
-                  >
-                    Resend Verification Email
-                  </Button>
-                )}
-              </div>
-
-              <div className="text-center">
-                <p className="text-gray-600">
-                  {mode === "login"
-                    ? "Don't have an account?"
-                    : "Already have an account?"}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                {mode === "login" && (
                   <button
                     type="button"
-                    onClick={toggleMode}
-                    className="cursor-pointer ml-2 text-slate-600 hover:text-slate-700 font-semibold"
+                    onClick={() => {
+                      dispatch(clearError());
+                      navigate("/forgot-password");
+                    }}
+                    className="text-xs text-primary hover:underline"
                   >
-                    {mode === "login" ? "Sign up" : "Sign in"}
+                    Forgot password?
                   </button>
-                </p>
+                )}
               </div>
-            </form>
-          </div>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={formData.password}
+                required
+                onChange={handleInputChange}
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
+                placeholder="••••••••"
+                minLength={6}
+                className="h-10"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-10 mt-1"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {mode === "login" ? "Signing in…" : "Creating account…"}
+                </>
+              ) : mode === "login" ? (
+                "Sign in"
+              ) : (
+                "Create account"
+              )}
+            </Button>
+
+            {isEmailNotVerified && mode === "login" && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResendVerification}
+                disabled={loading}
+                className="w-full"
+              >
+                Resend Verification Email
+              </Button>
+            )}
+          </form>
+
+          <Separator className="my-6" />
+
+          <p className="text-center text-sm text-muted-foreground">
+            {mode === "login"
+              ? "Don't have an account?"
+              : "Already have an account?"}
+            <button
+              type="button"
+              onClick={toggleMode}
+              className="ml-1.5 font-medium text-primary hover:underline"
+            >
+              {mode === "login" ? "Sign up" : "Sign in"}
+            </button>
+          </p>
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground/60 mt-6">
+          © {new Date().getFullYear()} TeamFlow · Project Management
+        </p>
       </div>
     </div>
   );

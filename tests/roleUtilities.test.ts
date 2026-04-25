@@ -37,6 +37,6 @@ describe("getRoleBadgeStyle", () => {
     expect(getRoleBadgeStyle(Role.ADMIN)).toContain("blue");
     expect(getRoleBadgeStyle(Role.MANAGER)).toContain("emerald");
     expect(getRoleBadgeStyle(Role.MEMBER)).toContain("slate");
-    expect(getRoleBadgeStyle(Role.GUEST)).toContain("gray");
+    expect(getRoleBadgeStyle(Role.GUEST)).toContain("slate");
   });
 });

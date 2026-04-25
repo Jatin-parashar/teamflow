@@ -532,8 +532,8 @@ const ProjectsPage = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Project</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete the project and all associated
-                tasks. This action cannot be undone.
+                Are you sure you want to delete this project? It will be moved
+                to trash and can be restored later.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

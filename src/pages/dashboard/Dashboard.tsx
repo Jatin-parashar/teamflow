@@ -15,11 +15,18 @@ const Dashboard = () => {
     return <TeamMemberDashboard />;
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Welcome back, {user?.name?.split(" ")[0] ?? "there"} 👋
+          {getGreeting()}, {user?.name?.split(" ")[0] ?? "there"} 👋
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
           Here's what's happening across your projects today.

@@ -28,16 +28,18 @@ class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-black">
-          <div className="text-center space-y-4 p-8 max-w-md">
-            <AlertTriangle className="h-16 w-16 text-red-500 mx-auto" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <div className="flex items-center justify-center min-h-screen bg-background">
+          <div className="text-center space-y-5 p-8 max-w-md">
+            <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
+              <AlertTriangle className="h-8 w-8 text-destructive" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">
               Something went wrong
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-muted-foreground">
               An unexpected error occurred. Please try refreshing the page.
             </p>
-            <p className="text-xs text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded">
+            <p className="text-xs text-muted-foreground font-mono bg-muted p-2 rounded-md">
               An error occurred. Please try again.
             </p>
             <Button

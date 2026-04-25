@@ -40,7 +40,7 @@ export const getRoleBadgeStyle = (role: Role) => {
     case Role.MEMBER:
       return "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700";
     case Role.GUEST:
-      return "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700";
+      return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700";
     default:
       return "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700";
   }
@@ -98,7 +98,7 @@ export const formatDate = (dateString: string) => {
 export const getProjectStatusColor = (status: string) => {
   switch (status) {
     case ProjectStatus.NOT_STARTED:
-      return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600";
+      return "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
     case ProjectStatus.IN_PROGRESS:
       return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
     case ProjectStatus.COMPLETED:
@@ -106,14 +106,14 @@ export const getProjectStatusColor = (status: string) => {
     case ProjectStatus.ON_HOLD:
       return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
     default:
-      return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600";
+      return "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
   }
 };
 
 export const getTaskStatusColor = (status: string) => {
   switch (status) {
     case TaskStatus.TO_DO:
-      return "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600";
+      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
     case TaskStatus.IN_PROGRESS:
       return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
     case TaskStatus.DONE:
@@ -121,7 +121,7 @@ export const getTaskStatusColor = (status: string) => {
     case TaskStatus.BLOCKED:
       return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
     default:
-      return "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600";
+      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
   }
 };
 
@@ -136,6 +136,6 @@ export const getPriorityColor = (priority: string) => {
     case Priority.CRITICAL:
       return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
     default:
-      return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600";
+      return "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
   }
 };

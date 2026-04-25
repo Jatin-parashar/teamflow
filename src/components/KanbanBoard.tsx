@@ -19,6 +19,7 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
+  ListChecks,
 } from "lucide-react";
 import { format } from "date-fns";
 import { TaskStatus as TS } from "@/features/types";
@@ -166,6 +167,17 @@ const KanbanBoard = ({ tasks, onStatusChange }: KanbanBoardProps) => {
                         >
                           {task.priority}
                         </Badge>
+                      </div>
+
+                      {/* Meta indicators */}
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        {task.subtasks && task.subtasks.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <ListChecks className="h-3 w-3" />
+                            {task.subtasks.filter((s) => s.completed).length}/
+                            {task.subtasks.length}
+                          </span>
+                        )}
                       </div>
 
                       <Separator />
