@@ -3,7 +3,12 @@ import {
   createSlice,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import { RequestStatus, type TaskPriority, TaskStatus } from "./types";
+import {
+  RequestStatus,
+  type TaskPriority,
+  TaskStatus,
+  type Subtask,
+} from "./types";
 import { firebaseFetch } from "@/firebase/firebaseFetch";
 import { v4 as uuidv4 } from "uuid";
 
@@ -24,6 +29,9 @@ export interface Task {
   updatedAt: string;
   dueDate: string;
   completedAt?: string;
+  subtasks?: Subtask[];
+  isDeleted?: boolean;
+  deletedAt?: string;
 }
 
 interface TaskState {
@@ -55,7 +63,9 @@ export const fetchTasks = createAsyncThunk<
       "tasks.json"
     );
     if (!data) return [];
-    return Object.keys(data).map((key) => ({ id: key, ...data[key] }));
+    return Object.keys(data)
+      .map((key) => ({ id: key, ...data[key] }))
+      .filter((t) => !t.isDeleted);
   } catch (err: unknown) {
     return rejectWithValue(
       err instanceof Error ? err.message : "Failed to fetch tasks"
@@ -73,7 +83,9 @@ export const fetchTasksByProject = createAsyncThunk<
       `tasks.json?orderBy="projectId"&equalTo="${encodeURIComponent(projectId)}"`
     );
     if (!data) return [];
-    return Object.keys(data).map((key) => ({ id: key, ...data[key] }));
+    return Object.keys(data)
+      .map((key) => ({ id: key, ...data[key] }))
+      .filter((t) => !t.isDeleted);
   } catch (err: unknown) {
     return rejectWithValue(
       err instanceof Error ? err.message : "Failed to fetch tasks"
@@ -91,7 +103,9 @@ export const fetchTasksByUser = createAsyncThunk<
       `tasks.json?orderBy="assignedTo"&equalTo="${encodeURIComponent(userId)}"`
     );
     if (!data) return [];
-    return Object.keys(data).map((key) => ({ id: key, ...data[key] }));
+    return Object.keys(data)
+      .map((key) => ({ id: key, ...data[key] }))
+      .filter((t) => !t.isDeleted);
   } catch (err: unknown) {
     return rejectWithValue(
       err instanceof Error ? err.message : "Failed to fetch tasks"
@@ -175,11 +189,51 @@ export const deleteTask = createAsyncThunk<
   { rejectValue: string }
 >("tasks/deleteTask", async (taskId, { rejectWithValue }) => {
   try {
-    await firebaseFetch(`tasks/${taskId}.json`, { method: "DELETE" });
+    await firebaseFetch(`tasks/${taskId}.json`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+      }),
+    });
     return taskId;
   } catch (err: unknown) {
     return rejectWithValue(
       err instanceof Error ? err.message : "Failed to delete task"
+    );
+  }
+});
+
+export const restoreTask = createAsyncThunk<
+  Task,
+  string,
+  { rejectValue: string }
+>("tasks/restoreTask", async (taskId, { rejectWithValue }) => {
+  try {
+    await firebaseFetch(`tasks/${taskId}.json`, {
+      method: "PATCH",
+      body: JSON.stringify({ isDeleted: false, deletedAt: null }),
+    });
+    const data = await firebaseFetch<Omit<Task, "id">>(`tasks/${taskId}.json`);
+    return { id: taskId, ...data };
+  } catch (err: unknown) {
+    return rejectWithValue(
+      err instanceof Error ? err.message : "Failed to restore task"
+    );
+  }
+});
+
+export const permanentDeleteTask = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>("tasks/permanentDeleteTask", async (taskId, { rejectWithValue }) => {
+  try {
+    await firebaseFetch(`tasks/${taskId}.json`, { method: "DELETE" });
+    return taskId;
+  } catch (err: unknown) {
+    return rejectWithValue(
+      err instanceof Error ? err.message : "Failed to permanently delete task"
     );
   }
 });
@@ -279,6 +333,13 @@ const taskSlice = createSlice({
           state.currentTask = action.payload;
       })
       .addCase(deleteTask.fulfilled, (state, action) => {
+        state.tasks = state.tasks.filter((t) => t.id !== action.payload);
+        if (state.currentTask?.id === action.payload) state.currentTask = null;
+      })
+      .addCase(restoreTask.fulfilled, (state, action) => {
+        state.tasks.push(action.payload);
+      })
+      .addCase(permanentDeleteTask.fulfilled, (state, action) => {
         state.tasks = state.tasks.filter((t) => t.id !== action.payload);
         if (state.currentTask?.id === action.payload) state.currentTask = null;
       })

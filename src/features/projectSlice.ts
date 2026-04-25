@@ -33,6 +33,9 @@ export interface Project {
   updatedAt: string;
   startDate: string;
   endDate: string;
+  isArchived?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string;
 }
 
 interface ProjectState {
@@ -67,7 +70,9 @@ export const fetchProjects = createAsyncThunk<
       Omit<Project, "id">
     > | null>("projects.json");
     if (!data) return [];
-    return Object.keys(data).map((key) => ({ id: key, ...data[key] }));
+    return Object.keys(data)
+      .map((key) => ({ id: key, ...data[key] }))
+      .filter((p) => !p.isDeleted);
   } catch (error: unknown) {
     return rejectWithValue(
       error instanceof Error ? error.message : "Failed to fetch projects"
@@ -146,6 +151,48 @@ export const deleteProject = createAsyncThunk<
   { rejectValue: string }
 >("projects/deleteProject", async (projectId, { rejectWithValue }) => {
   try {
+    await firebaseFetch(`projects/${projectId}.json`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+      }),
+    });
+    return projectId;
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to delete project"
+    );
+  }
+});
+
+export const restoreProject = createAsyncThunk<
+  Project,
+  string,
+  { rejectValue: string }
+>("projects/restoreProject", async (projectId, { rejectWithValue }) => {
+  try {
+    await firebaseFetch(`projects/${projectId}.json`, {
+      method: "PATCH",
+      body: JSON.stringify({ isDeleted: false, deletedAt: null }),
+    });
+    const data = await firebaseFetch<Omit<Project, "id">>(
+      `projects/${projectId}.json`
+    );
+    return { id: projectId, ...data };
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to restore project"
+    );
+  }
+});
+
+export const permanentDeleteProject = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>("projects/permanentDeleteProject", async (projectId, { rejectWithValue }) => {
+  try {
     const tasksData = await firebaseFetch<Record<
       string,
       { projectId: string }
@@ -171,7 +218,51 @@ export const deleteProject = createAsyncThunk<
     return projectId;
   } catch (error: unknown) {
     return rejectWithValue(
-      error instanceof Error ? error.message : "Failed to delete project"
+      error instanceof Error
+        ? error.message
+        : "Failed to permanently delete project"
+    );
+  }
+});
+
+export const archiveProject = createAsyncThunk<
+  Project,
+  string,
+  { rejectValue: string }
+>("projects/archiveProject", async (projectId, { rejectWithValue }) => {
+  try {
+    await firebaseFetch(`projects/${projectId}.json`, {
+      method: "PATCH",
+      body: JSON.stringify({ isArchived: true }),
+    });
+    const data = await firebaseFetch<Omit<Project, "id">>(
+      `projects/${projectId}.json`
+    );
+    return { id: projectId, ...data };
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to archive project"
+    );
+  }
+});
+
+export const unarchiveProject = createAsyncThunk<
+  Project,
+  string,
+  { rejectValue: string }
+>("projects/unarchiveProject", async (projectId, { rejectWithValue }) => {
+  try {
+    await firebaseFetch(`projects/${projectId}.json`, {
+      method: "PATCH",
+      body: JSON.stringify({ isArchived: false }),
+    });
+    const data = await firebaseFetch<Omit<Project, "id">>(
+      `projects/${projectId}.json`
+    );
+    return { id: projectId, ...data };
+  } catch (error: unknown) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to unarchive project"
     );
   }
 });
@@ -307,6 +398,30 @@ const projectSlice = createSlice({
         state.projects = state.projects.filter((p) => p.id !== action.payload);
         if (state.currentProject?.id === action.payload)
           state.currentProject = null;
+      })
+      .addCase(restoreProject.fulfilled, (state, action) => {
+        state.projects.push(action.payload);
+      })
+      .addCase(permanentDeleteProject.fulfilled, (state, action) => {
+        state.projects = state.projects.filter((p) => p.id !== action.payload);
+        if (state.currentProject?.id === action.payload)
+          state.currentProject = null;
+      })
+      .addCase(archiveProject.fulfilled, (state, action) => {
+        const index = state.projects.findIndex(
+          (p) => p.id === action.payload.id
+        );
+        if (index !== -1) state.projects[index] = action.payload;
+        if (state.currentProject?.id === action.payload.id)
+          state.currentProject = action.payload;
+      })
+      .addCase(unarchiveProject.fulfilled, (state, action) => {
+        const index = state.projects.findIndex(
+          (p) => p.id === action.payload.id
+        );
+        if (index !== -1) state.projects[index] = action.payload;
+        if (state.currentProject?.id === action.payload.id)
+          state.currentProject = action.payload;
       })
       .addCase(addProjectMember.fulfilled, (state, action) => {
         const index = state.projects.findIndex(

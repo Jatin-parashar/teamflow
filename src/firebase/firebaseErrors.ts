@@ -12,7 +12,11 @@ export function getFirebaseAuthErrorMessage(errorString: string): string {
     "auth/popup-closed-by-user": "Sign-in popup was closed.",
     "auth/operation-not-allowed": "This sign-in method is not enabled.",
     "auth/requires-recent-login": "Please log in again to continue.",
+    "auth/email-not-verified":
+      "Please verify your email before signing in. Check your inbox.",
   };
+
+  if (errorMap[errorString]) return errorMap[errorString];
 
   const match = errorString.match(/\(auth\/([^)]+)\)/);
   const code = match ? `auth/${match[1]}` : "";

@@ -63,6 +63,34 @@ export const hasMinRole = (userRole: Role, minRole: Role): boolean => {
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[minRole];
 };
 
+export interface Subtask {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+export interface Attachment {
+  id: string;
+  taskId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  contentType: string;
+  uploadedBy: string;
+  uploadedByName: string;
+  createdAt: string;
+}
+
+export interface Comment {
+  id: string;
+  taskId: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt: string;
+  editedAt?: string;
+}
+
 export const Permissions = {
   canManageUsers: (role: Role) => hasMinRole(role, Role.ADMIN),
   canCreateProjects: (role: Role) => hasMinRole(role, Role.ADMIN),
