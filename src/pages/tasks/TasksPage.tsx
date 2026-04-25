@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -103,6 +104,12 @@ const TasksPage = () => {
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [currentPage, statusFilter, priorityFilter, projectFilter, searchTerm]);
 
   useEffect(() => {
     dispatch(fetchTasks());
@@ -112,9 +119,71 @@ const TasksPage = () => {
   const handleDeleteTask = async (taskId: string) => {
     try {
       await dispatch(deleteTask(taskId)).unwrap();
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
       toast.success("Task deleted successfully");
     } catch (_error) {
       toast.error("Failed to delete task");
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: TaskStatus) => {
+    setBulkLoading(true);
+    let success = 0;
+    for (const taskId of selectedIds) {
+      try {
+        await dispatch(
+          updateTaskStatus({ taskId, status: newStatus })
+        ).unwrap();
+        success++;
+      } catch {
+        /* continue */
+      }
+    }
+    setBulkLoading(false);
+    setSelectedIds(new Set());
+    toast.success(`Updated ${success} task(s)`);
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkLoading(true);
+    let success = 0;
+    for (const taskId of selectedIds) {
+      try {
+        await dispatch(deleteTask(taskId)).unwrap();
+        success++;
+      } catch {
+        /* continue */
+      }
+    }
+    setBulkLoading(false);
+    setSelectedIds(new Set());
+    toast.success(`Deleted ${success} task(s)`);
+  };
+
+  const toggleSelect = (taskId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const pageIds = new Set(paginatedTasks.map((t) => t.id));
+    const allSelected = paginatedTasks.every((t) => selectedIds.has(t.id));
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        pageIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => new Set([...prev, ...pageIds]));
     }
   };
 
@@ -472,6 +541,71 @@ const TasksPage = () => {
           </CardContent>
         </Card>
 
+        {/* Bulk Actions */}
+        {selectedIds.size > 0 && (
+          <Card className="border border-primary/30 bg-primary/5">
+            <CardContent className="p-3 flex items-center gap-3 flex-wrap">
+              <span className="text-sm font-medium">
+                {selectedIds.size} selected
+              </span>
+              <Separator orientation="vertical" className="h-5" />
+              <Select
+                onValueChange={(v) => handleBulkStatusChange(v as TaskStatus)}
+                disabled={bulkLoading}
+              >
+                <SelectTrigger className="h-8 w-40 text-xs bg-background">
+                  <SelectValue placeholder="Change status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TS.TO_DO}>To Do</SelectItem>
+                  <SelectItem value={TS.IN_PROGRESS}>In Progress</SelectItem>
+                  <SelectItem value={TS.DONE}>Done</SelectItem>
+                  <SelectItem value={TS.BLOCKED}>Blocked</SelectItem>
+                </SelectContent>
+              </Select>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={bulkLoading}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    Delete Selected
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Tasks</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete {selectedIds.size}{" "}
+                      task(s)? They will be moved to trash.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleBulkDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Board View */}
         {viewMode === "board" ? (
           <KanbanBoard
@@ -523,6 +657,15 @@ const TasksPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={
+                              paginatedTasks.length > 0 &&
+                              paginatedTasks.every((t) => selectedIds.has(t.id))
+                            }
+                            onCheckedChange={toggleSelectAll}
+                          />
+                        </TableHead>
                         <TableHead className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                           Task
                         </TableHead>
@@ -548,8 +691,14 @@ const TasksPage = () => {
                       {paginatedTasks.map((task) => (
                         <TableRow
                           key={task.id}
-                          className="hover:bg-muted/40 transition-colors"
+                          className={`hover:bg-muted/40 transition-colors ${selectedIds.has(task.id) ? "bg-primary/5" : ""}`}
                         >
+                          <TableCell className="py-3">
+                            <Checkbox
+                              checked={selectedIds.has(task.id)}
+                              onCheckedChange={() => toggleSelect(task.id)}
+                            />
+                          </TableCell>
                           <TableCell className="py-3">
                             <div className="space-y-0.5">
                               <p className="font-medium text-sm text-foreground">
@@ -719,8 +868,8 @@ const TasksPage = () => {
                                           </AlertDialogTitle>
                                           <AlertDialogDescription>
                                             Are you sure you want to delete "
-                                            {task.title}"? This action cannot be
-                                            undone.
+                                            {task.title}"? It will be moved to
+                                            trash.
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
